@@ -242,13 +242,59 @@ function updateStars() {
 // 修改創建卡牌紋理的函數
 function createCardTexture(cardData) {
     return new Promise((resolve, reject) => {
+        const canvas = document.createElement('canvas');
+        canvas.width = 512;
+        canvas.height = 712;
+        const ctx = canvas.getContext('2d');
+        
+        // 填充白色背景
+        ctx.fillStyle = 'white';
+        ctx.fillRect(0, 0, 512, 712);
+        
         const textureLoader = new THREE.TextureLoader();
         const imagePath = `/images/${cardData.imageFile}`;
         
         textureLoader.load(
             imagePath,
-            (texture) => {
-                texture.flipY = false; // 防止圖片上下顛倒
+            (imageTexture) => {
+                // 計算圖片在卡片中的位置和大小
+                const cardPadding = 40;  // 卡片邊距
+                const imageWidth = canvas.width - (cardPadding * 2);
+                const imageHeight = canvas.height - (cardPadding * 2);
+                const imageX = cardPadding;
+                const imageY = cardPadding;
+                
+                // 繪製圖片
+                ctx.drawImage(imageTexture.image, imageX, imageY, imageWidth, imageHeight);
+                
+                // 繪製左上角的花色和數字
+                ctx.font = 'bold 60px Arial';
+                ctx.fillStyle = cardData.color;
+                ctx.textAlign = 'left';
+                ctx.textBaseline = 'top';
+                
+                // 左上角數字
+                ctx.fillText(cardData.value, 20, 20);
+                
+                // 左上角花色
+                ctx.font = 'bold 60px Arial';
+                ctx.fillText(getSuitSymbol(cardData.suit), 20, 80);
+                
+                // 繪製右下角的花色和數字（旋轉180度）
+                ctx.save();
+                ctx.translate(canvas.width, canvas.height);
+                ctx.rotate(Math.PI);
+                
+                // 右下角數字
+                ctx.fillText(cardData.value, 20, 20);
+                
+                // 右下角花色
+                ctx.fillText(getSuitSymbol(cardData.suit), 20, 80);
+                ctx.restore();
+                
+                // 將 Canvas 轉換為紋理
+                const texture = new THREE.CanvasTexture(canvas);
+                texture.flipY = true; // 修正圖片方向
                 texture.needsUpdate = true;
                 resolve(texture);
             },
@@ -256,16 +302,8 @@ function createCardTexture(cardData) {
             (error) => {
                 console.error('載入圖片失敗:', error);
                 console.error('嘗試載入的圖片路徑:', imagePath);
+                
                 // 如果圖片載入失敗，使用備用的文字紋理
-                const canvas = document.createElement('canvas');
-                canvas.width = 512;
-                canvas.height = 712;
-                const ctx = canvas.getContext('2d');
-                
-                // 填充白色背景
-                ctx.fillStyle = 'white';
-                ctx.fillRect(0, 0, 512, 712);
-                
                 // 繪製卡牌內容
                 ctx.font = 'bold 80px Arial';
                 ctx.fillStyle = cardData.color;
@@ -284,7 +322,7 @@ function createCardTexture(cardData) {
                 
                 // 將 Canvas 轉換為紋理
                 const fallbackTexture = new THREE.CanvasTexture(canvas);
-                fallbackTexture.flipY = false;
+                fallbackTexture.flipY = true;
                 fallbackTexture.needsUpdate = true;
                 resolve(fallbackTexture);
             }
