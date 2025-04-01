@@ -53,7 +53,9 @@ const gameState = {
     cards: [],          // 收集的卡牌
     isDrawing: false,   // 是否正在抽卡
     currentCard: null,  // 當前抽到的卡牌
-    showCollection: false // 是否顯示集卡書
+    showCollection: false, // 是否顯示集卡書
+    newCardsCount: 0,   // 新卡片數量
+    uniqueCardTypes: new Set() // 卡片種類集合
 };
 
 // DOM 元素參考
@@ -133,6 +135,8 @@ function createUI() {
         .then(response => response.text())
         .then(svgContent => {
             collectionButton.innerHTML = svgContent;
+            // 初始化按鈕上的數字
+            updateCollectionButton();
         })
         .catch(error => {
             console.error('載入 SVG 失敗:', error);
@@ -142,10 +146,12 @@ function createUI() {
                     <path d="M19 1l-5 5v11l5-4.5V1zM1 4v14c0 1.1.9 2 2 2h11V4H1zm14-3v2h3v3h2V1h-5z"/>
                 </svg>
             `;
+            // 初始化按鈕上的數字
+            updateCollectionButton();
         });
     
     collectionButton.addEventListener('click', toggleCollection);
-    buttonsContainer.appendChild(collectionButton);
+    mountElement.appendChild(collectionButton);  // 改為直接加到 mountElement
     
     // 集卡書彈窗
     collectionModal = document.createElement('div');
@@ -408,6 +414,12 @@ async function drawCard() {
     gameState.cards.push(newCard);
     gameState.currentCard = newCard;
     
+    // 更新卡片種類集合
+    gameState.uniqueCardTypes.add(newCard.name);
+    
+    // 增加新卡片計數
+    gameState.newCardsCount++;
+    
     // 更新 UI
     updateCurrentCardDisplay(newCard);
     updateCollectionButton();
@@ -489,7 +501,33 @@ function updateCurrentCardDisplay(card) {
 
 // 更新集卡書按鈕
 function updateCollectionButton() {
-    collectionButton.setAttribute('title', `集卡書 (${gameState.cards.length})`);
+    const uniqueCount = gameState.uniqueCardTypes.size;
+    const originalSvg = collectionButton.querySelector('svg');
+    
+    if (originalSvg) {
+        // 保留原始的 SVG，只更新數字指示器
+        collectionButton.innerHTML = originalSvg.outerHTML;
+    } else {
+        // 如果沒有原始 SVG，使用備用圖示
+        collectionButton.innerHTML = `
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
+                <path d="M19 1l-5 5v11l5-4.5V1zM1 4v14c0 1.1.9 2 2 2h11V4H1zm14-3v2h3v3h2V1h-5z"/>
+            </svg>
+        `;
+    }
+    
+    // 添加數字指示器
+    if (gameState.newCardsCount > 0) {
+        const newCardsIndicator = document.createElement('div');
+        newCardsIndicator.className = 'new-cards-count';
+        newCardsIndicator.textContent = gameState.newCardsCount;
+        collectionButton.appendChild(newCardsIndicator);
+    }
+    
+    const totalCardsIndicator = document.createElement('div');
+    totalCardsIndicator.className = 'total-cards-count';
+    totalCardsIndicator.textContent = uniqueCount;
+    collectionButton.appendChild(totalCardsIndicator);
 }
 
 // 切換集卡書顯示
@@ -497,6 +535,11 @@ function toggleCollection() {
     gameState.showCollection = !gameState.showCollection;
     
     if (gameState.showCollection) {
+        // 清空新卡片計數
+        gameState.newCardsCount = 0;
+        // 更新最後訪問時間
+        localStorage.setItem('lastVisitTime', Date.now());
+        updateCollectionButton();
         updateCollectionModal();
         collectionModal.style.display = 'flex';
     } else {
@@ -544,6 +587,11 @@ function loadCardsFromStorage() {
     const savedCards = localStorage.getItem('kmtPokerCards');
     if (savedCards) {
         gameState.cards = JSON.parse(savedCards);
+        // 重建卡片種類集合
+        gameState.uniqueCardTypes = new Set(gameState.cards.map(card => card.name));
+        // 設置新卡片數量為未讀卡片數量
+        const lastVisitTime = localStorage.getItem('lastVisitTime') || 0;
+        gameState.newCardsCount = gameState.cards.filter(card => card.id > lastVisitTime).length;
         updateCollectionButton();
     }
 }
@@ -551,6 +599,7 @@ function loadCardsFromStorage() {
 // 保存卡牌到本地存儲
 function saveCardsToStorage() {
     localStorage.setItem('kmtPokerCards', JSON.stringify(gameState.cards));
+    localStorage.setItem('lastVisitTime', Date.now());
 }
 
 // 啟動遊戲

@@ -65,6 +65,7 @@ body {
     width: 64px;
     height: 64px;
     transition: all 0.3s ease;
+    z-index: 100;
 }
 
 .collection-button svg {
@@ -104,6 +105,42 @@ body {
     font-size: 0.875rem;
     white-space: nowrap;
     margin-top: 0.5rem;
+}
+
+.collection-button .new-cards-count {
+    position: absolute;
+    top: -8px;
+    right: -8px;
+    background-color: #dc2626;
+    color: white;
+    font-size: 14px;
+    font-weight: bold;
+    min-width: 20px;
+    height: 20px;
+    border-radius: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0 6px;
+    z-index: 101;
+}
+
+.collection-button .total-cards-count {
+    position: absolute;
+    bottom: -8px;
+    right: -8px;
+    background-color: #000000;
+    color: white;
+    font-size: 14px;
+    font-weight: bold;
+    min-width: 20px;
+    height: 20px;
+    border-radius: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0 6px;
+    z-index: 101;
 }
 
 .current-card {
