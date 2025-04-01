@@ -1,20 +1,52 @@
+import * as THREE from '../node_modules/three/build/three.module.js';
+
 // 卡牌遊戲主要邏輯
 
 // 卡牌種類
-const cardTypes = [
-    { id: 1, name: "紅心A", color: "red", suit: "hearts", value: "A" },
-    { id: 2, name: "紅心2", color: "red", suit: "hearts", value: "2" },
-    { id: 3, name: "紅心3", color: "red", suit: "hearts", value: "3" },
-    { id: 4, name: "方塊A", color: "red", suit: "diamonds", value: "A" },
-    { id: 5, name: "方塊2", color: "red", suit: "diamonds", value: "2" },
-    { id: 6, name: "方塊3", color: "red", suit: "diamonds", value: "3" },
-    { id: 7, name: "黑桃A", color: "black", suit: "spades", value: "A" },
-    { id: 8, name: "黑桃2", color: "black", suit: "spades", value: "2" },
-    { id: 9, name: "黑桃3", color: "black", suit: "spades", value: "3" },
-    { id: 10, name: "梅花A", color: "black", suit: "clubs", value: "A" },
-    { id: 11, name: "梅花2", color: "black", suit: "clubs", value: "2" },
-    { id: 12, name: "梅花3", color: "black", suit: "clubs", value: "3" },
-];
+let cardTypes = [];
+
+// 從 CSV 讀取卡牌資料
+async function loadCardsFromCSV() {
+    try {
+        const response = await fetch('/KMTPoker.csv');
+        const csvText = await response.text();
+        const lines = csvText.split('\n').filter(line => line.trim());
+        
+        // 跳過標題行
+        for (let i = 1; i < lines.length; i++) {
+            const line = lines[i];
+            const columns = line.split(',');
+            const name = columns[0];
+            const suit = columns[1];
+            const color = columns[2];
+            const value = columns[3];
+            
+            if (name && suit && color && value) {
+                // 修正圖片檔名格式
+                let imageFileName;
+                if (suit === 'joker') {
+                    imageFileName = `joker-${color}.jpg`;
+                } else {
+                    imageFileName = `${suit}-${value}.jpg`.toLowerCase();
+                }
+                
+                cardTypes.push({
+                    id: i,
+                    name,
+                    color,
+                    suit,
+                    value,
+                    person: columns[4],
+                    title: columns[5],
+                    quote: columns[6],
+                    imageFile: imageFileName
+                });
+            }
+        }
+    } catch (error) {
+        console.error('讀取 CSV 檔案失敗:', error);
+    }
+}
 
 // 遊戲狀態
 const gameState = {
@@ -36,9 +68,13 @@ let collectionModal;
 let scene, camera, renderer;
 let cardMesh;
 let animationFrameId;
+let stars = [];  // 新增：用於存儲星星
 
 // 初始化函數
-function init() {
+async function init() {
+    // 載入卡牌資料
+    await loadCardsFromCSV();
+    
     // 創建 UI 元素
     createUI();
     
@@ -121,7 +157,7 @@ function createUI() {
 function initThreeJS() {
     // 創建場景
     scene = new THREE.Scene();
-    scene.background = new THREE.Color(0x2d572c);
+    scene.background = new THREE.Color(0xf0f5ff);  // 改為淡藍色
     
     // 創建相機
     camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
@@ -163,67 +199,131 @@ function animate() {
         cardMesh.rotation.y += 0.01;
     }
     
+    // 更新星星
+    updateStars();
+    
     renderer.render(scene, camera);
 }
 
-// 創建卡牌3D模型
-function createCardMesh(cardData) {
-    const cardGeometry = new THREE.BoxGeometry(3, 4, 0.1);
-    
-    // 創建材質
-    const textureLoader = new THREE.TextureLoader();
-    
-    // 創建卡牌材質
-    const materials = [
-        new THREE.MeshBasicMaterial({ color: 0x888888 }), // 右側
-        new THREE.MeshBasicMaterial({ color: 0x888888 }), // 左側
-        new THREE.MeshBasicMaterial({ color: 0x888888 }), // 上側
-        new THREE.MeshBasicMaterial({ color: 0x888888 }), // 下側
-        new THREE.MeshBasicMaterial({ color: 0xdddddd, map: createCardTexture(cardData) }), // 正面
-        new THREE.MeshBasicMaterial({ color: 0x0000aa }) // 背面 (藍色背景)
-    ];
-    
-    const mesh = new THREE.Mesh(cardGeometry, materials);
-    
-    // 設置初始位置在畫面外
-    mesh.position.set(0, -10, 0);
-    mesh.userData = { cardData };
-    
-    return mesh;
+// 創建星星
+function createStar(position) {
+    const starGeometry = new THREE.SphereGeometry(0.05, 8, 8);
+    const starMaterial = new THREE.MeshBasicMaterial({ 
+        color: 0xFFFF00,
+        transparent: true,
+        opacity: 1
+    });
+    const star = new THREE.Mesh(starGeometry, starMaterial);
+    star.position.copy(position);
+    star.userData.velocity = new THREE.Vector3(
+        (Math.random() - 0.5) * 0.3,
+        (Math.random() - 0.5) * 0.3,
+        (Math.random() - 0.5) * 0.3
+    );
+    star.userData.opacity = 1;
+    return star;
 }
 
-// 創建卡牌的紋理
+// 更新星星動畫
+function updateStars() {
+    for (let i = stars.length - 1; i >= 0; i--) {
+        const star = stars[i];
+        star.position.add(star.userData.velocity);
+        star.userData.opacity -= 0.02;
+        star.material.opacity = star.userData.opacity;
+        
+        if (star.userData.opacity <= 0) {
+            scene.remove(star);
+            stars.splice(i, 1);
+        }
+    }
+}
+
+// 修改創建卡牌紋理的函數
 function createCardTexture(cardData) {
-    const canvas = document.createElement('canvas');
-    canvas.width = 512;
-    canvas.height = 712;
-    const ctx = canvas.getContext('2d');
+    return new Promise((resolve, reject) => {
+        const textureLoader = new THREE.TextureLoader();
+        const imagePath = `/images/${cardData.imageFile}`;
+        
+        textureLoader.load(
+            imagePath,
+            (texture) => {
+                texture.flipY = false; // 防止圖片上下顛倒
+                texture.needsUpdate = true;
+                resolve(texture);
+            },
+            undefined,
+            (error) => {
+                console.error('載入圖片失敗:', error);
+                console.error('嘗試載入的圖片路徑:', imagePath);
+                // 如果圖片載入失敗，使用備用的文字紋理
+                const canvas = document.createElement('canvas');
+                canvas.width = 512;
+                canvas.height = 712;
+                const ctx = canvas.getContext('2d');
+                
+                // 填充白色背景
+                ctx.fillStyle = 'white';
+                ctx.fillRect(0, 0, 512, 712);
+                
+                // 繪製卡牌內容
+                ctx.font = 'bold 80px Arial';
+                ctx.fillStyle = cardData.color;
+                ctx.textAlign = 'center';
+                
+                // 繪製數值
+                ctx.fillText(cardData.value, canvas.width/2, 120);
+                
+                // 繪製花色
+                ctx.font = 'bold 200px Arial';
+                ctx.fillText(getSuitSymbol(cardData.suit), canvas.width/2, canvas.height/2);
+                
+                // 繪製人物名稱
+                ctx.font = 'bold 40px Arial';
+                ctx.fillText(cardData.person || '', canvas.width/2, canvas.height - 120);
+                
+                // 將 Canvas 轉換為紋理
+                const fallbackTexture = new THREE.CanvasTexture(canvas);
+                fallbackTexture.flipY = false;
+                fallbackTexture.needsUpdate = true;
+                resolve(fallbackTexture);
+            }
+        );
+    });
+}
+
+// 修改創建卡牌3D模型的函數
+async function createCardMesh(cardData) {
+    // 使用平面幾何體作為卡片
+    const geometry = new THREE.PlaneGeometry(3, 4);
     
-    // 填充白色背景
-    ctx.fillStyle = 'white';
-    ctx.fillRect(0, 0, 512, 712);
+    // 創建材質
+    const texture = await createCardTexture(cardData);
+    const frontMaterial = new THREE.MeshBasicMaterial({ 
+        color: 0xffffff,
+        map: texture,
+        side: THREE.FrontSide
+    });
+    const backMaterial = new THREE.MeshBasicMaterial({ 
+        color: 0x0000aa,
+        side: THREE.BackSide
+    });
     
-    // 繪製卡牌內容
-    ctx.font = 'bold 80px Arial';
-    ctx.fillStyle = cardData.color;
+    // 創建兩個網格，一個用於正面，一個用於背面
+    const frontMesh = new THREE.Mesh(geometry, frontMaterial);
+    const backMesh = new THREE.Mesh(geometry, backMaterial);
     
-    // 左上和右下繪製數值
-    ctx.fillText(cardData.value, 30, 80);
-    ctx.save();
-    ctx.translate(512, 712);
-    ctx.rotate(Math.PI);
-    ctx.fillText(cardData.value, 30, 80);
-    ctx.restore();
+    // 創建一個群組來包含兩個網格
+    const group = new THREE.Group();
+    group.add(frontMesh);
+    group.add(backMesh);
     
-    // 繪製花色
-    ctx.font = 'bold 200px Arial';
-    ctx.fillText(getSuitSymbol(cardData.suit), 150, 380);
+    // 設置初始位置和旋轉
+    group.position.set(0, -10, 0);
+    group.rotation.y = Math.PI;
+    group.userData = { cardData };
     
-    // 將Canvas轉換為紋理
-    const texture = new THREE.CanvasTexture(canvas);
-    texture.needsUpdate = true;
-    
-    return texture;
+    return group;
 }
 
 // 獲取花色符號
@@ -237,8 +337,8 @@ function getSuitSymbol(suit) {
     }
 }
 
-// 抽卡功能
-function drawCard() {
+// 修改抽卡功能
+async function drawCard() {
     if (gameState.isDrawing) return;
     
     gameState.isDrawing = true;
@@ -261,7 +361,7 @@ function drawCard() {
     saveCardsToStorage();
     
     // 創建並動畫顯示新卡片
-    const newCardMesh = createCardMesh(newCard);
+    const newCardMesh = await createCardMesh(newCard);
     animateCard(newCardMesh);
 }
 
@@ -282,7 +382,7 @@ function animateCard(newCardMesh) {
     
     // 動畫時間軸
     let time = 0;
-    const duration = 60; // 動畫幀數
+    const duration = 30;
     
     // 卡片飛入動畫
     function flyIn() {
@@ -290,16 +390,32 @@ function animateCard(newCardMesh) {
             gameState.isDrawing = false;
             drawButton.disabled = false;
             drawButton.textContent = '抽牌';
+            
+            // 在卡片周圍創建星星
+            for (let i = 0; i < 20; i++) {
+                const star = createStar(new THREE.Vector3(
+                    cardMesh.position.x + (Math.random() - 0.5) * 2,
+                    cardMesh.position.y + (Math.random() - 0.5) * 2,
+                    cardMesh.position.z + (Math.random() - 0.5) * 2
+                ));
+                scene.add(star);
+                stars.push(star);
+            }
             return;
         }
         
         time++;
         
-        // 修改卡片位置和旋轉
-        cardMesh.position.y = -10 + (10 * Math.sin((time / duration) * Math.PI / 2));
-        cardMesh.rotation.y = Math.PI - (Math.PI * time / duration);
+        // 使用 easeOutBack 效果
+        const progress = time / duration;
+        const easeOut = 1 - Math.pow(1 - progress, 3);
+        const easeOutBack = progress < 0.5
+            ? 2 * progress * progress
+            : 1 - Math.pow(-2 * progress + 2, 2) / 2;
         
-        // 繼續動畫
+        cardMesh.position.y = -10 + (10 * easeOutBack);
+        cardMesh.rotation.y = Math.PI - (Math.PI * easeOut);
+        
         requestAnimationFrame(flyIn);
     }
     

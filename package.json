@@ -1,0 +1,19 @@
+{
+  "name": "kmtpoker",
+  "version": "1.0.0",
+  "description": "這是一個使用Three.js開發的簡單撲克牌抽卡遊戲。玩家可以點擊\"抽牌\"按鈕來抽取隨機撲克牌，並將它們收集在集卡書中。",
+  "main": "index.js",
+  "scripts": {
+    "dev": "vite",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "three": "^0.162.0"
+  },
+  "devDependencies": {
+    "vite": "^5.2.6"
+  }
+}
