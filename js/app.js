@@ -525,11 +525,16 @@ async function drawCard() {
     gameState.cards.push(newCard);
     gameState.currentCard = newCard;
     
+    // 檢查是否為新種類的卡片
+    const isNewCardType = !gameState.uniqueCardTypes.has(newCard.name);
+    
     // 更新卡片種類集合
     gameState.uniqueCardTypes.add(newCard.name);
     
-    // 增加新卡片計數
-    gameState.newCardsCount++;
+    // 只有在抽到新種類的卡片時才增加計數
+    if (isNewCardType) {
+        gameState.newCardsCount++;
+    }
     
     // 更新 UI
     updateCurrentCardDisplay(newCard);
@@ -698,11 +703,29 @@ function loadCardsFromStorage() {
     const savedCards = localStorage.getItem('kmtPokerCards');
     if (savedCards) {
         gameState.cards = JSON.parse(savedCards);
-        // 重建卡片種類集合
-        gameState.uniqueCardTypes = new Set(gameState.cards.map(card => card.name));
-        // 設置新卡片數量為未讀卡片數量
+        
+        // 獲取上次訪問時間
         const lastVisitTime = localStorage.getItem('lastVisitTime') || 0;
-        gameState.newCardsCount = gameState.cards.filter(card => card.id > lastVisitTime).length;
+        
+        // 重建卡片種類集合
+        const oldCardTypes = new Set();
+        const newCardTypes = new Set();
+        
+        // 遍歷所有卡片，分別記錄舊卡片和新卡片的種類
+        gameState.cards.forEach(card => {
+            if (card.id <= lastVisitTime) {
+                oldCardTypes.add(card.name);
+            } else {
+                newCardTypes.add(card.name);
+            }
+        });
+        
+        // 合併所有卡片種類
+        gameState.uniqueCardTypes = new Set([...oldCardTypes, ...newCardTypes]);
+        
+        // 計算新種類的卡片數量（只計算在上次訪問後出現的新種類）
+        gameState.newCardsCount = Array.from(newCardTypes).filter(cardName => !oldCardTypes.has(cardName)).length;
+        
         updateCollectionButton();
     }
 }
