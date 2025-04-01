@@ -58,7 +58,11 @@ const gameState = {
     uniqueCardTypes: new Set(), // 卡片種類集合
     isDragging: false,  // 是否正在拖曳卡片
     lastMouseX: 0,      // 上一次滑鼠 X 座標
-    touchStartX: 0      // 觸控開始的 X 座標
+    lastMouseY: 0,      // 上一次滑鼠 Y 座標
+    touchStartX: 0,     // 觸控開始的 X 座標
+    touchStartY: 0,     // 觸控開始的 Y 座標
+    bendAmount: 0,      // 卡片彎曲程度
+    maxBendAmount: 1.0  // 最大彎曲程度
 };
 
 // DOM 元素參考
@@ -233,6 +237,7 @@ function handleDragStart(event) {
     
     gameState.isDragging = true;
     gameState.lastMouseX = event.clientX;
+    gameState.lastMouseY = event.clientY;
 }
 
 // 處理拖曳移動
@@ -240,13 +245,42 @@ function handleDragMove(event) {
     if (!gameState.isDragging || !cardMesh) return;
     
     const deltaX = event.clientX - gameState.lastMouseX;
+    const deltaY = event.clientY - gameState.lastMouseY;
+    
+    // 處理左右旋轉
     cardMesh.rotation.y += deltaX * 0.01;
+    
+    // 處理上下彎曲
+    const bendDelta = deltaY * 0.003;
+    gameState.bendAmount = Math.max(-gameState.maxBendAmount, 
+                                  Math.min(gameState.maxBendAmount, 
+                                         gameState.bendAmount - bendDelta));
+    updateCardBend();
+    
     gameState.lastMouseX = event.clientX;
+    gameState.lastMouseY = event.clientY;
 }
 
 // 處理拖曳結束
 function handleDragEnd() {
+    if (!gameState.isDragging) return;
+    
     gameState.isDragging = false;
+    
+    // 漸漸恢復卡片平整
+    function restoreBend() {
+        if (Math.abs(gameState.bendAmount) < 0.01) {
+            gameState.bendAmount = 0;
+            updateCardBend();
+            return;
+        }
+        
+        gameState.bendAmount *= 0.9;
+        updateCardBend();
+        requestAnimationFrame(restoreBend);
+    }
+    
+    restoreBend();
 }
 
 // 處理觸控開始
@@ -255,6 +289,7 @@ function handleTouchStart(event) {
     
     gameState.isDragging = true;
     gameState.touchStartX = event.touches[0].clientX;
+    gameState.touchStartY = event.touches[0].clientY;
 }
 
 // 處理觸控移動
@@ -262,9 +297,22 @@ function handleTouchMove(event) {
     if (!gameState.isDragging || !cardMesh) return;
     
     event.preventDefault(); // 防止頁面滾動
+    
     const deltaX = event.touches[0].clientX - gameState.touchStartX;
+    const deltaY = event.touches[0].clientY - gameState.touchStartY;
+    
+    // 處理左右旋轉
     cardMesh.rotation.y += deltaX * 0.01;
+    
+    // 處理上下彎曲
+    const bendDelta = deltaY * 0.001;
+    gameState.bendAmount = Math.max(-gameState.maxBendAmount, 
+                                  Math.min(gameState.maxBendAmount, 
+                                         gameState.bendAmount - bendDelta));
+    updateCardBend();
+    
     gameState.touchStartX = event.touches[0].clientX;
+    gameState.touchStartY = event.touches[0].clientY;
 }
 
 // 處理觸控結束
@@ -414,8 +462,8 @@ function createCardTexture(cardData) {
 
 // 修改創建卡牌3D模型的函數
 async function createCardMesh(cardData) {
-    // 使用平面幾何體作為卡片
-    const geometry = new THREE.PlaneGeometry(3, 4);
+    // 使用更細緻的平面幾何體以實現彎曲效果
+    const geometry = new THREE.PlaneGeometry(3, 4, 20, 20);
     
     // 創建材質
     const texture = await createCardTexture(cardData);
@@ -430,8 +478,8 @@ async function createCardMesh(cardData) {
     });
     
     // 創建兩個網格，一個用於正面，一個用於背面
-    const frontMesh = new THREE.Mesh(geometry, frontMaterial);
-    const backMesh = new THREE.Mesh(geometry, backMaterial);
+    const frontMesh = new THREE.Mesh(geometry.clone(), frontMaterial);
+    const backMesh = new THREE.Mesh(geometry.clone(), backMaterial);
     
     // 創建一個群組來包含兩個網格
     const group = new THREE.Group();
@@ -441,7 +489,11 @@ async function createCardMesh(cardData) {
     // 設置初始位置和旋轉
     group.position.set(0, -10, 0);
     group.rotation.y = Math.PI;
-    group.userData = { cardData };
+    group.userData = { 
+        cardData,
+        frontGeometry: frontMesh.geometry,
+        backGeometry: backMesh.geometry
+    };
     
     return group;
 }
@@ -659,6 +711,33 @@ function loadCardsFromStorage() {
 function saveCardsToStorage() {
     localStorage.setItem('kmtPokerCards', JSON.stringify(gameState.cards));
     localStorage.setItem('lastVisitTime', Date.now());
+}
+
+// 更新卡片彎曲效果
+function updateCardBend() {
+    if (!cardMesh) return;
+    
+    const frontGeometry = cardMesh.userData.frontGeometry;
+    const backGeometry = cardMesh.userData.backGeometry;
+    const bendAmount = gameState.bendAmount;
+    
+    // 更新幾何體頂點
+    const vertices = frontGeometry.attributes.position.array;
+    const backVertices = backGeometry.attributes.position.array;
+    
+    for (let i = 0; i < vertices.length; i += 3) {
+        const y = vertices[i + 1]; // Y 座標
+        const normalizedY = y / 2; // 將 Y 座標歸一化到 [-1, 1] 範圍
+        
+        // 使用二次函數創建彎曲效果
+        const bend = bendAmount * normalizedY * normalizedY;
+        vertices[i + 2] = bend; // 修改 Z 座標
+        backVertices[i + 2] = bend; // 同步修改背面的 Z 座標
+    }
+    
+    // 標記幾何體需要更新
+    frontGeometry.attributes.position.needsUpdate = true;
+    backGeometry.attributes.position.needsUpdate = true;
 }
 
 // 啟動遊戲
