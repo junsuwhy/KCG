@@ -61,8 +61,11 @@ const gameState = {
     lastMouseY: 0,      // 上一次滑鼠 Y 座標
     touchStartX: 0,     // 觸控開始的 X 座標
     touchStartY: 0,     // 觸控開始的 Y 座標
-    bendAmount: 0,      // 卡片彎曲程度
-    maxBendAmount: 1.0  // 最大彎曲程度
+    foldAmount: 0,      // 摺疊程度
+    targetFoldAmount: 0, // 目標摺疊程度
+    maxFoldAmount: Math.PI / 3, // 最大摺疊角度（60度）
+    foldSegments: 10,   // 摺疊段數
+    foldAnimationSpeed: 0.15 // 摺疊動畫速度
 };
 
 // DOM 元素參考
@@ -187,7 +190,7 @@ function createUI() {
 function initThreeJS() {
     // 創建場景
     scene = new THREE.Scene();
-    scene.background = new THREE.Color(0xf0f5ff);  // 改為淡藍色
+    scene.background = new THREE.Color(0xf0f5ff);
     
     // 創建相機
     camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
@@ -198,13 +201,17 @@ function initThreeJS() {
     renderer.setSize(window.innerWidth, window.innerHeight);
     mountElement.insertBefore(renderer.domElement, mountElement.firstChild);
     
-    // 添加燈光
+    // 添加更強的燈光效果
     const ambientLight = new THREE.AmbientLight(0xffffff, 0.5);
     scene.add(ambientLight);
     
     const directionalLight = new THREE.DirectionalLight(0xffffff, 0.8);
     directionalLight.position.set(1, 1, 1);
     scene.add(directionalLight);
+    
+    const backLight = new THREE.DirectionalLight(0xffffff, 0.5);
+    backLight.position.set(-1, -1, -1);
+    scene.add(backLight);
 }
 
 // 添加事件監聽器
@@ -250,12 +257,11 @@ function handleDragMove(event) {
     // 處理左右旋轉
     cardMesh.rotation.y += deltaX * 0.01;
     
-    // 處理上下彎曲
-    const bendDelta = deltaY * 0.003;
-    gameState.bendAmount = Math.max(-gameState.maxBendAmount, 
-                                  Math.min(gameState.maxBendAmount, 
-                                         gameState.bendAmount - bendDelta));
-    updateCardBend();
+    // 處理上下摺疊
+    const foldDelta = deltaY * 0.003;
+    gameState.targetFoldAmount = Math.max(-gameState.maxFoldAmount, 
+                                        Math.min(gameState.maxFoldAmount, 
+                                               gameState.targetFoldAmount - foldDelta));
     
     gameState.lastMouseX = event.clientX;
     gameState.lastMouseY = event.clientY;
@@ -267,20 +273,8 @@ function handleDragEnd() {
     
     gameState.isDragging = false;
     
-    // 漸漸恢復卡片平整
-    function restoreBend() {
-        if (Math.abs(gameState.bendAmount) < 0.01) {
-            gameState.bendAmount = 0;
-            updateCardBend();
-            return;
-        }
-        
-        gameState.bendAmount *= 0.9;
-        updateCardBend();
-        requestAnimationFrame(restoreBend);
-    }
-    
-    restoreBend();
+    // 設置目標摺疊值為0，讓卡片漸漸恢復平整
+    gameState.targetFoldAmount = 0;
 }
 
 // 處理觸控開始
@@ -296,7 +290,7 @@ function handleTouchStart(event) {
 function handleTouchMove(event) {
     if (!gameState.isDragging || !cardMesh) return;
     
-    event.preventDefault(); // 防止頁面滾動
+    event.preventDefault();
     
     const deltaX = event.touches[0].clientX - gameState.touchStartX;
     const deltaY = event.touches[0].clientY - gameState.touchStartY;
@@ -304,12 +298,11 @@ function handleTouchMove(event) {
     // 處理左右旋轉
     cardMesh.rotation.y += deltaX * 0.01;
     
-    // 處理上下彎曲
-    const bendDelta = deltaY * 0.001;
-    gameState.bendAmount = Math.max(-gameState.maxBendAmount, 
-                                  Math.min(gameState.maxBendAmount, 
-                                         gameState.bendAmount - bendDelta));
-    updateCardBend();
+    // 處理上下摺疊
+    const foldDelta = deltaY * 0.003;
+    gameState.targetFoldAmount = Math.max(-gameState.maxFoldAmount, 
+                                        Math.min(gameState.maxFoldAmount, 
+                                               gameState.targetFoldAmount - foldDelta));
     
     gameState.touchStartX = event.touches[0].clientX;
     gameState.touchStartY = event.touches[0].clientY;
@@ -324,9 +317,13 @@ function handleTouchEnd() {
 function animate() {
     animationFrameId = requestAnimationFrame(animate);
     
-    if (cardMesh && !gameState.isDragging) {
-        // 只有在不拖曳時才自動旋轉
-        cardMesh.rotation.y += 0.01;
+    if (cardMesh) {
+        if (!gameState.isDragging) {
+            // 只有在不拖曳時才自動旋轉
+            cardMesh.rotation.y += 0.01;
+        }
+        // 每幀更新摺疊效果
+        updateCardFold();
     }
     
     // 更新星星
@@ -462,19 +459,22 @@ function createCardTexture(cardData) {
 
 // 修改創建卡牌3D模型的函數
 async function createCardMesh(cardData) {
-    // 使用更細緻的平面幾何體以實現彎曲效果
-    const geometry = new THREE.PlaneGeometry(3, 4, 20, 20);
+    // 使用更細緻的平面幾何體以實現摺疊效果
+    // 水平和垂直方向都需要足夠的分段
+    const geometry = new THREE.PlaneGeometry(3, 4, gameState.foldSegments, gameState.foldSegments);
     
     // 創建材質
     const texture = await createCardTexture(cardData);
-    const frontMaterial = new THREE.MeshBasicMaterial({ 
+    const frontMaterial = new THREE.MeshPhongMaterial({ 
         color: 0xffffff,
         map: texture,
-        side: THREE.FrontSide
+        side: THREE.FrontSide,
+        shininess: 30
     });
-    const backMaterial = new THREE.MeshBasicMaterial({ 
+    const backMaterial = new THREE.MeshPhongMaterial({ 
         color: 0x0000aa,
-        side: THREE.BackSide
+        side: THREE.BackSide,
+        shininess: 30
     });
     
     // 創建兩個網格，一個用於正面，一個用於背面
@@ -713,31 +713,80 @@ function saveCardsToStorage() {
     localStorage.setItem('lastVisitTime', Date.now());
 }
 
-// 更新卡片彎曲效果
-function updateCardBend() {
+// 更新卡片摺疊效果
+function updateCardFold() {
     if (!cardMesh) return;
     
     const frontGeometry = cardMesh.userData.frontGeometry;
     const backGeometry = cardMesh.userData.backGeometry;
-    const bendAmount = gameState.bendAmount;
+    
+    // 平滑過渡到目標摺疊值
+    const foldDiff = gameState.targetFoldAmount - gameState.foldAmount;
+    if (Math.abs(foldDiff) > 0.001) {
+        gameState.foldAmount += foldDiff * gameState.foldAnimationSpeed;
+    } else {
+        gameState.foldAmount = gameState.targetFoldAmount;
+    }
+    
+    const foldAmount = gameState.foldAmount;
     
     // 更新幾何體頂點
-    const vertices = frontGeometry.attributes.position.array;
+    const frontVertices = frontGeometry.attributes.position.array;
     const backVertices = backGeometry.attributes.position.array;
+    const segments = gameState.foldSegments;
     
-    for (let i = 0; i < vertices.length; i += 3) {
-        const y = vertices[i + 1]; // Y 座標
-        const normalizedY = y / 2; // 將 Y 座標歸一化到 [-1, 1] 範圍
-        
-        // 使用二次函數創建彎曲效果
-        const bend = bendAmount * normalizedY * normalizedY;
-        vertices[i + 2] = bend; // 修改 Z 座標
-        backVertices[i + 2] = bend; // 同步修改背面的 Z 座標
+    // 計算每個摺疊段的大小
+    const segmentHeight = 4 / segments;
+    const segmentWidth = 3 / segments;
+    
+    // 遍歷所有頂點
+    for (let i = 0; i <= segments; i++) {
+        for (let j = 0; j <= segments; j++) {
+            // 計算當前點的網格索引
+            const index = (i * (segments + 1) + j) * 3;
+            
+            // 計算正規化座標（範圍從-1到1）
+            const normalizedY = 1 - (i / segments) * 2;
+            const normalizedX = (j / segments) * 2 - 1;
+            
+            // 計算摺疊角度（交替正負，並考慮水平位置）
+            const verticalFold = foldAmount * (i % 2 === 0 ? 1 : -1);
+            const horizontalFold = foldAmount * 0.5 * (j % 2 === 0 ? 1 : -1);
+            
+            // 計算Z軸偏移（結合垂直和水平摺疊）
+            const zOffset = (Math.sin(verticalFold) * segmentHeight * 0.5) +
+                          (Math.sin(horizontalFold) * segmentWidth * 0.3);
+            
+            // 計算壓縮效果（結合垂直和水平壓縮）
+            const yCompress = (1 - Math.cos(verticalFold)) * segmentHeight * 0.5;
+            const xCompress = (1 - Math.cos(horizontalFold)) * segmentWidth * 0.3;
+            
+            // 更新頂點位置
+            const originalX = frontVertices[index];
+            const originalY = frontVertices[index + 1];
+            
+            // 應用壓縮效果
+            const compressedX = originalX - (Math.sign(originalX) * xCompress);
+            const compressedY = originalY - (Math.sign(originalY) * yCompress);
+            
+            // 更新前後兩面的頂點
+            frontVertices[index] = compressedX;
+            frontVertices[index + 1] = compressedY;
+            frontVertices[index + 2] = zOffset;
+            
+            backVertices[index] = compressedX;
+            backVertices[index + 1] = compressedY;
+            backVertices[index + 2] = zOffset;
+        }
     }
     
     // 標記幾何體需要更新
     frontGeometry.attributes.position.needsUpdate = true;
     backGeometry.attributes.position.needsUpdate = true;
+    
+    // 更新法向量以確保光照正確
+    frontGeometry.computeVertexNormals();
+    backGeometry.computeVertexNormals();
 }
 
 // 啟動遊戲
