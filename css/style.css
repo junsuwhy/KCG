@@ -32,22 +32,21 @@ body {
 }
 
 .draw-button {
-    background-color: #f59e0b;
-    color: white;
-    border: none;
+    background-color: transparent;
+    color: rgba(0, 0, 0, 0.8);
+    border: 2px solid rgba(0, 0, 0, 0.3);
     padding: 1.5rem 2rem;
     font-size: 1.5rem;
     font-weight: bold;
     border-radius: 9999px;
     cursor: pointer;
-    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
-    transition: all 0.2s ease;
+    transition: all 0.3s ease;
 }
 
 .draw-button:hover, .draw-button:active {
-    background-color: #d97706;
+    background-color: rgba(0, 0, 0, 0.1);
+    border-color: rgba(0, 0, 0, 0.5);
     transform: translateY(2px);
-    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
 }
 
 .draw-button:disabled {
@@ -56,21 +55,43 @@ body {
 }
 
 .collection-button {
-    background-color: #3b82f6;
-    color: white;
+    position: fixed;
+    top: 1rem;
+    right: 1rem;
+    background: none;
     border: none;
-    padding: 0.75rem 2rem;
-    font-size: 1.25rem;
-    border-radius: 0.5rem;
+    padding: 0;
     cursor: pointer;
-    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
-    transition: all 0.2s ease;
+    width: 48px;
+    height: 48px;
+    transition: all 0.3s ease;
 }
 
-.collection-button:hover, .collection-button:active {
-    background-color: #2563eb;
-    transform: translateY(1px);
-    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
+.collection-button svg {
+    width: 100%;
+    height: 100%;
+    fill: rgba(0, 0, 0, 0.8);
+    transition: all 0.3s ease;
+}
+
+.collection-button:hover svg {
+    fill: rgba(0, 0, 0, 1);
+    transform: scale(1.1);
+}
+
+.collection-button:hover::after {
+    content: '集卡書';
+    position: absolute;
+    top: 100%;
+    left: 50%;
+    transform: translateX(-50%);
+    background-color: rgba(0, 0, 0, 0.8);
+    color: white;
+    padding: 0.5rem;
+    border-radius: 0.25rem;
+    font-size: 0.875rem;
+    white-space: nowrap;
+    margin-top: 0.5rem;
 }
 
 .current-card {

@@ -126,7 +126,12 @@ function createUI() {
     // 集卡書按鈕
     collectionButton = document.createElement('button');
     collectionButton.className = 'collection-button';
-    collectionButton.textContent = '集卡書 (0)';
+    collectionButton.setAttribute('title', '集卡書');
+    collectionButton.innerHTML = `
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
+            <path d="M19 1l-5 5v11l5-4.5V1zM1 4v14c0 1.1.9 2 2 2h11V4H1zm14-3v2h3v3h2V1h-5z"/>
+        </svg>
+    `;
     collectionButton.addEventListener('click', toggleCollection);
     buttonsContainer.appendChild(collectionButton);
     
@@ -472,7 +477,7 @@ function updateCurrentCardDisplay(card) {
 
 // 更新集卡書按鈕
 function updateCollectionButton() {
-    collectionButton.textContent = `集卡書 (${gameState.cards.length})`;
+    collectionButton.setAttribute('title', `集卡書 (${gameState.cards.length})`);
 }
 
 // 切換集卡書顯示
