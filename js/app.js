@@ -127,11 +127,23 @@ function createUI() {
     collectionButton = document.createElement('button');
     collectionButton.className = 'collection-button';
     collectionButton.setAttribute('title', '集卡書');
-    collectionButton.innerHTML = `
-        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
-            <path d="M19 1l-5 5v11l5-4.5V1zM1 4v14c0 1.1.9 2 2 2h11V4H1zm14-3v2h3v3h2V1h-5z"/>
-        </svg>
-    `;
+    
+    // 使用 fetch 載入 SVG
+    fetch('images/book.svg')
+        .then(response => response.text())
+        .then(svgContent => {
+            collectionButton.innerHTML = svgContent;
+        })
+        .catch(error => {
+            console.error('載入 SVG 失敗:', error);
+            // 如果載入失敗，使用備用圖示
+            collectionButton.innerHTML = `
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
+                    <path d="M19 1l-5 5v11l5-4.5V1zM1 4v14c0 1.1.9 2 2 2h11V4H1zm14-3v2h3v3h2V1h-5z"/>
+                </svg>
+            `;
+        });
+    
     collectionButton.addEventListener('click', toggleCollection);
     buttonsContainer.appendChild(collectionButton);
     
