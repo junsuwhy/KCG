@@ -55,7 +55,10 @@ const gameState = {
     currentCard: null,  // 當前抽到的卡牌
     showCollection: false, // 是否顯示集卡書
     newCardsCount: 0,   // 新卡片數量
-    uniqueCardTypes: new Set() // 卡片種類集合
+    uniqueCardTypes: new Set(), // 卡片種類集合
+    isDragging: false,  // 是否正在拖曳卡片
+    lastMouseX: 0,      // 上一次滑鼠 X 座標
+    touchStartX: 0      // 觸控開始的 X 座標
 };
 
 // DOM 元素參考
@@ -211,14 +214,70 @@ function addEventListeners() {
         camera.aspect = width / height;
         camera.updateProjectionMatrix();
     });
+
+    // 滑鼠事件
+    renderer.domElement.addEventListener('mousedown', handleDragStart);
+    renderer.domElement.addEventListener('mousemove', handleDragMove);
+    renderer.domElement.addEventListener('mouseup', handleDragEnd);
+    renderer.domElement.addEventListener('mouseleave', handleDragEnd);
+
+    // 觸控事件
+    renderer.domElement.addEventListener('touchstart', handleTouchStart);
+    renderer.domElement.addEventListener('touchmove', handleTouchMove);
+    renderer.domElement.addEventListener('touchend', handleTouchEnd);
+}
+
+// 處理拖曳開始
+function handleDragStart(event) {
+    if (!cardMesh) return;
+    
+    gameState.isDragging = true;
+    gameState.lastMouseX = event.clientX;
+}
+
+// 處理拖曳移動
+function handleDragMove(event) {
+    if (!gameState.isDragging || !cardMesh) return;
+    
+    const deltaX = event.clientX - gameState.lastMouseX;
+    cardMesh.rotation.y += deltaX * 0.01;
+    gameState.lastMouseX = event.clientX;
+}
+
+// 處理拖曳結束
+function handleDragEnd() {
+    gameState.isDragging = false;
+}
+
+// 處理觸控開始
+function handleTouchStart(event) {
+    if (!cardMesh) return;
+    
+    gameState.isDragging = true;
+    gameState.touchStartX = event.touches[0].clientX;
+}
+
+// 處理觸控移動
+function handleTouchMove(event) {
+    if (!gameState.isDragging || !cardMesh) return;
+    
+    event.preventDefault(); // 防止頁面滾動
+    const deltaX = event.touches[0].clientX - gameState.touchStartX;
+    cardMesh.rotation.y += deltaX * 0.01;
+    gameState.touchStartX = event.touches[0].clientX;
+}
+
+// 處理觸控結束
+function handleTouchEnd() {
+    gameState.isDragging = false;
 }
 
 // 動畫循環
 function animate() {
     animationFrameId = requestAnimationFrame(animate);
     
-    if (cardMesh) {
-        // 卡片旋轉動畫
+    if (cardMesh && !gameState.isDragging) {
+        // 只有在不拖曳時才自動旋轉
         cardMesh.rotation.y += 0.01;
     }
     
