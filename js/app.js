@@ -1,4 +1,5 @@
 import * as THREE from '../node_modules/three/build/three.module.js';
+import { setupCollectionSystem, toggleCollection, updateCollectionButton, updateCollectionModal, saveCardsToStorage, loadCardsFromStorage } from './collection.js';
 
 // 卡牌遊戲主要邏輯
 
@@ -8,7 +9,8 @@ let cardTypes = [];
 // 從 CSV 讀取卡牌資料
 async function loadCardsFromCSV() {
     try {
-        const response = await fetch('/KMTPoker.csv');
+        const csvUrl = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vSniLwHat28siwAkCjIOdq9C5WzeG3C2WN7l5XkHNrHu0UezGTz3ZPvu9hNNPqmfefx8qUNHOFuU9uX/pub?output=csv';
+        const response = await fetch(csvUrl);
         const csvText = await response.text();
         const lines = csvText.split('\n').filter(line => line.trim());
         
@@ -73,8 +75,6 @@ let mountElement;
 let uiContainer;
 let currentCardDisplay;
 let drawButton;
-let collectionButton;
-let collectionModal;
 
 // Three.js 相關變數
 let scene, camera, renderer;
@@ -93,8 +93,8 @@ async function init() {
     // 初始化 Three.js
     initThreeJS();
     
-    // 載入本地存儲的卡牌
-    loadCardsFromStorage();
+    // 初始化集卡書系統
+    setupCollectionSystem(mountElement, gameState);
     
     // 添加事件監聽器
     addEventListeners();
@@ -134,56 +134,6 @@ function createUI() {
     drawButton.textContent = '抽牌';
     drawButton.addEventListener('click', drawCard);
     buttonsContainer.appendChild(drawButton);
-    
-    // 集卡書按鈕
-    collectionButton = document.createElement('button');
-    collectionButton.className = 'collection-button';
-    collectionButton.setAttribute('title', '集卡書');
-    
-    // 使用 fetch 載入 SVG
-    fetch('images/book.svg')
-        .then(response => response.text())
-        .then(svgContent => {
-            collectionButton.innerHTML = svgContent;
-            // 初始化按鈕上的數字
-            updateCollectionButton();
-        })
-        .catch(error => {
-            console.error('載入 SVG 失敗:', error);
-            // 如果載入失敗，使用備用圖示
-            collectionButton.innerHTML = `
-                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
-                    <path d="M19 1l-5 5v11l5-4.5V1zM1 4v14c0 1.1.9 2 2 2h11V4H1zm14-3v2h3v3h2V1h-5z"/>
-                </svg>
-            `;
-            // 初始化按鈕上的數字
-            updateCollectionButton();
-        });
-    
-    collectionButton.addEventListener('click', toggleCollection);
-    mountElement.appendChild(collectionButton);  // 改為直接加到 mountElement
-    
-    // 集卡書彈窗
-    collectionModal = document.createElement('div');
-    collectionModal.className = 'collection-modal';
-    collectionModal.style.display = 'none';
-    
-    const collectionTitle = document.createElement('h2');
-    collectionTitle.className = 'collection-title';
-    collectionTitle.textContent = '集卡書';
-    collectionModal.appendChild(collectionTitle);
-    
-    const collectionGrid = document.createElement('div');
-    collectionGrid.className = 'collection-grid';
-    collectionModal.appendChild(collectionGrid);
-    
-    const backButton = document.createElement('button');
-    backButton.className = 'back-button';
-    backButton.textContent = '返回遊戲';
-    backButton.addEventListener('click', toggleCollection);
-    collectionModal.appendChild(backButton);
-    
-    mountElement.appendChild(collectionModal);
 }
 
 // 初始化 Three.js
@@ -509,6 +459,8 @@ function getSuitSymbol(suit) {
     }
 }
 
+// 從 collection.js 導入，保留此函數以供卡牌創建使用
+
 // 修改抽卡功能
 async function drawCard() {
     if (gameState.isDrawing) return;
@@ -541,7 +493,7 @@ async function drawCard() {
     updateCollectionButton();
     
     // 保存卡片到本地存儲
-    saveCardsToStorage();
+    saveCardsToStorage(gameState);
     
     // 創建並動畫顯示新卡片
     const newCardMesh = await createCardMesh(newCard);
@@ -615,126 +567,7 @@ function updateCurrentCardDisplay(card) {
     `;
 }
 
-// 更新集卡書按鈕
-function updateCollectionButton() {
-    const uniqueCount = gameState.uniqueCardTypes.size;
-    const originalSvg = collectionButton.querySelector('svg');
-    
-    if (originalSvg) {
-        // 保留原始的 SVG，只更新數字指示器
-        collectionButton.innerHTML = originalSvg.outerHTML;
-    } else {
-        // 如果沒有原始 SVG，使用備用圖示
-        collectionButton.innerHTML = `
-            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
-                <path d="M19 1l-5 5v11l5-4.5V1zM1 4v14c0 1.1.9 2 2 2h11V4H1zm14-3v2h3v3h2V1h-5z"/>
-            </svg>
-        `;
-    }
-    
-    // 添加數字指示器
-    if (gameState.newCardsCount > 0) {
-        const newCardsIndicator = document.createElement('div');
-        newCardsIndicator.className = 'new-cards-count';
-        newCardsIndicator.textContent = gameState.newCardsCount;
-        collectionButton.appendChild(newCardsIndicator);
-    }
-    
-    const totalCardsIndicator = document.createElement('div');
-    totalCardsIndicator.className = 'total-cards-count';
-    totalCardsIndicator.textContent = uniqueCount;
-    collectionButton.appendChild(totalCardsIndicator);
-}
 
-// 切換集卡書顯示
-function toggleCollection() {
-    gameState.showCollection = !gameState.showCollection;
-    
-    if (gameState.showCollection) {
-        // 清空新卡片計數
-        gameState.newCardsCount = 0;
-        // 更新最後訪問時間
-        localStorage.setItem('lastVisitTime', Date.now());
-        updateCollectionButton();
-        updateCollectionModal();
-        collectionModal.style.display = 'flex';
-    } else {
-        collectionModal.style.display = 'none';
-    }
-}
-
-// 更新集卡書內容
-function updateCollectionModal() {
-    const collectionGrid = collectionModal.querySelector('.collection-grid');
-    collectionGrid.innerHTML = '';
-    
-    if (gameState.cards.length === 0) {
-        const emptyMessage = document.createElement('div');
-        emptyMessage.style.gridColumn = '1 / -1';
-        emptyMessage.style.textAlign = 'center';
-        emptyMessage.style.color = 'white';
-        emptyMessage.style.fontSize = '1.25rem';
-        emptyMessage.textContent = '尚未收集到任何卡片';
-        collectionGrid.appendChild(emptyMessage);
-        return;
-    }
-    
-    // 添加所有卡片
-    gameState.cards.forEach(card => {
-        const cardItem = document.createElement('div');
-        cardItem.className = 'card-item';
-        
-        const cardSymbol = document.createElement('div');
-        cardSymbol.className = `card-symbol ${card.color === 'red' ? 'symbol-red' : ''}`;
-        cardSymbol.textContent = `${getSuitSymbol(card.suit)} ${card.value}`;
-        cardItem.appendChild(cardSymbol);
-        
-        const cardName = document.createElement('div');
-        cardName.className = 'card-name';
-        cardName.textContent = card.name;
-        cardItem.appendChild(cardName);
-        
-        collectionGrid.appendChild(cardItem);
-    });
-}
-
-// 從本地存儲加載卡牌
-function loadCardsFromStorage() {
-    const savedCards = localStorage.getItem('kmtPokerCards');
-    if (savedCards) {
-        gameState.cards = JSON.parse(savedCards);
-        
-        // 獲取上次訪問時間
-        const lastVisitTime = localStorage.getItem('lastVisitTime') || 0;
-        
-        // 重建卡片種類集合
-        const oldCardTypes = new Set();
-        const newCardTypes = new Set();
-        
-        // 遍歷所有卡片，分別記錄舊卡片和新卡片的種類
-        gameState.cards.forEach(card => {
-            if (card.id <= lastVisitTime) {
-                oldCardTypes.add(card.name);
-            } else {
-                newCardTypes.add(card.name);
-            }
-        });
-        
-        // 合併所有卡片種類
-        gameState.uniqueCardTypes = new Set([...oldCardTypes, ...newCardTypes]);
-        
-        // 計算新種類的卡片數量（只計算在上次訪問後出現的新種類）
-        gameState.newCardsCount = Array.from(newCardTypes).filter(cardName => !oldCardTypes.has(cardName)).length;
-        
-        updateCollectionButton();
-    }
-}
-
-// 保存卡牌到本地存儲
-function saveCardsToStorage() {
-    localStorage.setItem('kmtPokerCards', JSON.stringify(gameState.cards));
-    localStorage.setItem('lastVisitTime', Date.now());
-}
 
 // 更新卡片摺疊效果
 function updateCardFold() {
