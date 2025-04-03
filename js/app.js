@@ -1,4 +1,3 @@
-import * as THREE from '../node_modules/three/build/three.module.js';
 import { setupCollectionSystem, toggleCollection, updateCollectionButton, updateCollectionModal, saveCardsToStorage, loadCardsFromStorage, backToCollection } from './collection.js';
 import { initThreeJS, createCardMesh, animateCard, cleanup } from './animation.js';
 
