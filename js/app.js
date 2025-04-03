@@ -238,25 +238,14 @@ function createProgressBar(current, target) {
     }
     
     try {
-        // 確保數值為數字
-        current = Number(current) || 0;
-        target = Number(target) || 1; // 避免除以零
+        let needCount = target - current;
+        let progressBar = '尚缺 '+needCount+' 份';
         
-        // 計算百分比，最大為100%
-        const percent = Math.min(100, Math.round((current / target) * 100));
-        const filledBlocks = Math.round(percent / 10);
-        const emptyBlocks = 10 - filledBlocks;
-        
-        // 創建進度條字符串
-        let progressBar = '[';
-        progressBar += '='.repeat(Math.max(0, filledBlocks)); // 防止負數
-        progressBar += '　'.repeat(Math.max(0, emptyBlocks)); // 防止負數
-        progressBar += ']';
         
         return progressBar;
     } catch (e) {
         console.error('進度條生成錯誤:', e);
-        return '[          ]'; // 返回空進度條
+        return ''; // 返回空進度條
     }
 }
 
@@ -279,9 +268,9 @@ function updateCurrentCardDisplay(card) {
         cardInfo += `<p>目前罷免進行中</p>`;
         cardInfo += `<p>距離罷免收件截止日剩 <span class=\"red-large\">${remainingDays}</span> 天</p>`;
         
-        if (progressPercent !== null) {
-            cardInfo += `<p>目標進度：${progressPercent}%</p>`;
-            cardInfo += `<div class=\"progress-bar\">${progressBar}</div>`;
+        if (card.targetCount !== null && card.currentCount !== null) {
+            const remainingCount = card.targetCount - card.currentCount;
+            cardInfo += `<p>目標進度：${progressPercent}% 尚欠${remainingCount}份</p>`;
         }
         
         cardInfo += `<p><a href=\"${card.recallWebsite}\" target=\"_blank\" class=\"recall-link\">前往罷免資訊</a></p>`;
