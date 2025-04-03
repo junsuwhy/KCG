@@ -1,5 +1,7 @@
 import { setupCollectionSystem, toggleCollection, updateCollectionButton, updateCollectionModal, saveCardsToStorage, loadCardsFromStorage, backToCollection } from './collection.js';
 import { initThreeJS, createCardMesh, animateCard, cleanup } from './animation.js';
+import Papa from 'papaparse';
+
 
 // 導出卡牌類型資料和函數
 export function getCardTypes() {
