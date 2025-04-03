@@ -47,7 +47,15 @@ function createCollectionButton() {
     fetch('images/book.svg')
         .then(response => response.text())
         .then(svgContent => {
-            collectionButton.innerHTML = svgContent;
+            // 移除任何可能導致問題的 DOCTYPE 或註釋
+            const cleanedSvgContent = svgContent.replace(/<!DOCTYPE[^>]*>|<!--[\s\S]*?-->/g, '');
+            // 確保只有一個 SVG 標籤
+            const svgMatch = cleanedSvgContent.match(/<svg[\s\S]*?\/svg>/g);
+            if (svgMatch && svgMatch.length > 0) {
+                collectionButton.innerHTML = svgMatch[0]; // 只使用第一個匹配到的 SVG
+            } else {
+                collectionButton.innerHTML = cleanedSvgContent;
+            }
             // 初始化按鈕上的數字
             updateCollectionButton();
         })
@@ -210,11 +218,48 @@ function updateCollectionModal() {
         // 顯示卡片編號
         const cardNumberEl = document.createElement('div');
         cardNumberEl.className = 'card-number';
-        cardNumberEl.textContent = `#${cardNumber}`;
+        cardNumberEl.textContent = `${cardNumber}`;
         cardItem.appendChild(cardNumberEl);
         
         if (isCollected) {
             const card = collectedCards[cardType.name];
+            
+            // 創建卡片內容容器
+            const cardContent = document.createElement('div');
+            cardContent.className = 'card-content';
+            cardContent.style.width = '100%';
+            cardContent.style.height = '100%';
+            cardContent.style.position = 'relative';
+            cardContent.style.display = 'flex';
+            cardContent.style.flexDirection = 'column';
+            cardContent.style.justifyContent = 'center';
+            cardContent.style.alignItems = 'center';
+            cardItem.appendChild(cardContent);
+            
+            // 左上角花色和數字
+            const topLeftSymbol = document.createElement('div');
+            topLeftSymbol.className = `card-symbol ${card.color === 'red' ? 'symbol-red' : ''}`;
+            topLeftSymbol.style.position = 'absolute';
+            topLeftSymbol.style.top = '0.1rem';
+            topLeftSymbol.style.left = '0.1rem';
+            topLeftSymbol.style.fontSize = '1rem';
+            topLeftSymbol.style.fontWeight = 'bold';
+            topLeftSymbol.style.lineHeight = '0.9';
+            topLeftSymbol.innerHTML = `${card.value}<br>${getSuitSymbol(card.suit)}`;
+            cardContent.appendChild(topLeftSymbol);
+            
+            // 右下角花色和數字（旋轉18र度）
+            const bottomRightSymbol = document.createElement('div');
+            bottomRightSymbol.className = `card-symbol ${card.color === 'red' ? 'symbol-red' : ''}`;
+            bottomRightSymbol.style.position = 'absolute';
+            bottomRightSymbol.style.bottom = '0.1rem';
+            bottomRightSymbol.style.right = '0.1rem';
+            bottomRightSymbol.style.fontSize = '1rem';
+            bottomRightSymbol.style.fontWeight = 'bold';
+            bottomRightSymbol.style.lineHeight = '0.9';
+            bottomRightSymbol.style.transform = 'rotate(180deg)';
+            bottomRightSymbol.innerHTML = `${card.value}<br>${getSuitSymbol(card.suit)}`;
+            cardContent.appendChild(bottomRightSymbol);
             
             // 顯示卡片圖片（如果有）
             try {
@@ -222,33 +267,110 @@ function updateCollectionModal() {
                 cardImage.className = 'card-image';
                 cardImage.src = `/images/${card.imageFile}`;
                 cardImage.alt = card.name;
+                cardImage.style.margin = '0 auto'; // 居中
+                cardImage.style.display = 'block';
+                cardImage.style.width = '100%'; // 使圖片填展卡片
+                cardImage.style.maxWidth = '100px'; // 限制最大寬度
+                cardImage.style.height = 'auto';
+                cardImage.style.aspectRatio = '1/1';
+                cardImage.style.objectFit = 'cover';
                 cardImage.onerror = () => {
-                    // 如果圖片載入失敗，顯示花色和數字
+                    // 如果圖片載入失敗，顯示大花色符號和名稱
                     cardImage.style.display = 'none';
-                    const cardSymbol = document.createElement('div');
-                    cardSymbol.className = `card-symbol ${card.color === 'red' ? 'symbol-red' : ''}`;
-                    cardSymbol.textContent = `${getSuitSymbol(card.suit)} ${card.value}`;
-                    cardItem.insertBefore(cardSymbol, cardImage.nextSibling);
+                    
+                    // 大花色符號
+                    const centerSymbol = document.createElement('div');
+                    centerSymbol.className = `card-symbol ${card.color === 'red' ? 'symbol-red' : ''}`;
+                    centerSymbol.style.fontSize = '5rem';
+                    centerSymbol.style.textAlign = 'center';
+                    centerSymbol.style.width = '100%';
+                    centerSymbol.style.marginBottom = '0.5rem';
+                    centerSymbol.textContent = getSuitSymbol(card.suit);
+                    cardContent.appendChild(centerSymbol);
+                    
+                    // 顯示人物名稱
+                    const personName = document.createElement('div');
+                    personName.style.textAlign = 'center';
+                    personName.style.width = '100%';
+                    personName.style.fontSize = '0.9rem';
+                    personName.style.padding = '0 0.5rem';
+                    personName.style.whiteSpace = 'nowrap';
+                    personName.style.overflow = 'hidden';
+                    personName.style.textOverflow = 'ellipsis';
+                    personName.textContent = card.person || card.name;
+                    cardContent.appendChild(personName);
                 };
-                cardItem.appendChild(cardImage);
+                cardContent.appendChild(cardImage);
             } catch (e) {
-                // 如果圖片載入失敗，顯示花色和數字
-                const cardSymbol = document.createElement('div');
-                cardSymbol.className = `card-symbol ${card.color === 'red' ? 'symbol-red' : ''}`;
-                cardSymbol.textContent = `${getSuitSymbol(card.suit)} ${card.value}`;
-                cardItem.appendChild(cardSymbol);
+                // 如果圖片載入失敗，顯示大花色符號和名稱
+                // 大花色符號
+                const centerSymbol = document.createElement('div');
+                centerSymbol.className = `card-symbol ${card.color === 'red' ? 'symbol-red' : ''}`;
+                centerSymbol.style.fontSize = '5rem';
+                centerSymbol.style.textAlign = 'center';
+                centerSymbol.style.width = '100%';
+                centerSymbol.style.marginBottom = '0.5rem';
+                centerSymbol.textContent = getSuitSymbol(card.suit);
+                cardContent.appendChild(centerSymbol);
+                
+                // 顯示人物名稱
+                const personName = document.createElement('div');
+                personName.style.textAlign = 'center';
+                personName.style.width = '100%';
+                personName.style.fontSize = '0.9rem';
+                personName.style.padding = '0 0.5rem';
+                personName.style.whiteSpace = 'nowrap';
+                personName.style.overflow = 'hidden';
+                personName.style.textOverflow = 'ellipsis';
+                personName.textContent = card.person || card.name;
+                cardContent.appendChild(personName);
             }
             
-            // 顯示卡片名稱
-            const cardName = document.createElement('div');
-            cardName.className = 'card-name';
-            cardName.textContent = card.name;
-            cardItem.appendChild(cardName);
+            // 不顯示卡片名稱，依照需求
         } else {
             // 未收集的卡片
+            const placeholderContainer = document.createElement('div');
+            placeholderContainer.style.display = 'flex';
+            placeholderContainer.style.flexDirection = 'column';
+            placeholderContainer.style.alignItems = 'center';
+            placeholderContainer.style.justifyContent = 'center';
+            placeholderContainer.style.height = '100%';
+            placeholderContainer.style.width = '100%';
+            placeholderContainer.style.padding = '0.5rem';
+            
+            // 問號圖示
+            const questionMark = document.createElement('div');
+            questionMark.style.fontSize = '3.5rem';
+            questionMark.style.color = 'rgba(255, 255, 255, 0.15)';
+            questionMark.style.marginBottom = '0.5rem';
+            questionMark.style.fontWeight = 'bold';
+            questionMark.style.fontFamily = '"Arial", sans-serif';
+            questionMark.textContent = '?';
+            placeholderContainer.appendChild(questionMark);
+            
+            // 顯示人物名稱
+            const personName = document.createElement('div');
+            personName.style.textAlign = 'center';
+            personName.style.width = '100%';
+            personName.style.fontSize = '0.8rem';
+            personName.style.color = 'rgba(255, 255, 255, 0.6)';
+            personName.style.padding = '0 0.2rem';
+            personName.style.whiteSpace = 'nowrap';
+            personName.style.overflow = 'hidden';
+            personName.style.textOverflow = 'ellipsis';
+            personName.textContent = cardType.person || cardType.name;
+            
+            // 未收集文字
             const placeholderText = document.createElement('div');
             placeholderText.textContent = '未收集';
-            cardItem.appendChild(placeholderText);
+            placeholderText.style.fontSize = '0.7rem';
+            placeholderText.style.marginTop = '0.3rem';
+            placeholderText.style.color = 'rgba(255, 255, 255, 0.4)';
+            
+            placeholderContainer.appendChild(personName);
+            placeholderContainer.appendChild(placeholderText);
+            
+            cardItem.appendChild(placeholderContainer);
         }
         
         collectionGrid.appendChild(cardItem);

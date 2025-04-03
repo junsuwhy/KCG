@@ -10,6 +10,10 @@ body {
     touch-action: manipulation;
     background-color: #2d572c;
     color: #fff;
+    margin: 0;
+    padding: 0;
+    width: 100%;
+    height: 100%;
 }
 
 #root {
@@ -164,25 +168,35 @@ body {
     position: absolute;
     top: 0;
     left: 0;
-    width: 100%;
-    height: 100%;
-    background-color: rgba(0, 0, 0, 0.9);
+    width: 100vw; /* 使用視窗寬度 */
+    height: 100vh; /* 使用視窗高度 */
+    background-color: rgba(0, 0, 0, 0.95);
     z-index: 20;
-    padding: 1rem;
+    padding: 1.5rem 1rem; /* 縮小左右填充 */
     display: flex;
     flex-direction: column;
+    overflow: hidden;
+    box-sizing: border-box; /* 確保填充不增加寬度 */
 }
 
 .collection-info {
-    margin-bottom: 1rem;
+    margin-bottom: 1.5rem;
     display: flex;
     justify-content: space-between;
     align-items: center;
+    background-color: rgba(0, 0, 0, 0.3);
+    padding: 0.8rem 1.2rem;
+    border-radius: 0.5rem;
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
 }
 
 .collection-stats {
-    font-size: 0.9rem;
-    color: rgba(255, 255, 255, 0.8);
+    font-size: 1.1rem;
+    color: rgba(255, 255, 255, 1);
+    font-weight: 600;
+    background-color: rgba(0, 0, 0, 0.2);
+    padding: 0.4rem 0.8rem;
+    border-radius: 0.3rem;
 }
 
 .collection-title {
@@ -194,21 +208,26 @@ body {
 .collection-grid {
     display: grid;
     grid-template-columns: repeat(2, 1fr);
-    gap: 1rem;
+    gap: 2.5rem 1rem; /* 調整間距 */
     overflow-y: auto;
+    overflow-x: hidden; /* 避免水平滾動 */
     flex: 1;
-    padding: 0.5rem;
+    padding: 1.5rem 1rem;
+    max-height: calc(100vh - 11rem);
+    width: 100%;
 }
 
 @media (min-width: 768px) {
     .collection-grid {
         grid-template-columns: repeat(4, 1fr);
+        gap: 3.5rem 2rem; /* 調整大屏間距 */
     }
 }
 
 @media (min-width: 1024px) {
     .collection-grid {
         grid-template-columns: repeat(6, 1fr);
+        gap: 4rem 2rem; /* 調整更大屏幕間距 */
     }
 }
 
@@ -220,36 +239,64 @@ body {
     display: flex;
     flex-direction: column;
     align-items: center;
-    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+    justify-content: space-between;
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.3);
     position: relative;
-    min-height: 200px;
+    height: 200px; /* 調整高度 */
+    width: 140px; /* 調整寬度 */
+    max-width: 100%; /* 確保傳給小屏幕適應 */
+    margin: 0 auto; /* 居中 */
+    transition: transform 0.2s, box-shadow 0.2s;
+    border: 1px solid rgba(0, 0, 0, 0.1);
+}
+
+.card-item:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 8px 16px rgba(0, 0, 0, 0.4);
 }
 
 .card-item.empty {
-    background-color: rgba(255, 255, 255, 0.1);
-    border: 2px dashed rgba(255, 255, 255, 0.3);
-    box-shadow: none;
-    color: rgba(255, 255, 255, 0.5);
+    background-color: rgba(255, 255, 255, 0.05);
+    border: 2px dashed rgba(255, 255, 255, 0.2);
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+    color: rgba(255, 255, 255, 0.6);
     justify-content: center;
+    transition: all 0.3s ease;
 }
 
-.card-item .card-number {
+.card-item.empty:hover {
+    background-color: rgba(255, 255, 255, 0.08);
+    transform: translateY(-3px);
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
+}
+
+/* 卡片編號樣式 */
+.card-number {
     position: absolute;
-    top: 0.25rem;
-    left: 0.25rem;
-    font-size: 0.75rem;
-    background-color: rgba(0, 0, 0, 0.7);
+    top: -1rem;
+    left: -1rem;
+    background-color: #333; 
     color: white;
-    padding: 0.1rem 0.3rem;
-    border-radius: 0.25rem;
+    border-radius: 50%;
+    width: 2.2rem;
+    height: 2.2rem;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    font-size: 1rem;
+    font-weight: bold;
+    z-index: 2;
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.4);
+    border: 2px solid rgba(255, 255, 255, 0.7);
 }
 
 .card-item .card-image {
     width: 100%;
-    height: 120px;
+    height: auto;
+    aspect-ratio: 1 / 1; /* 1:1 比例 */
     object-fit: cover;
     border-radius: 0.25rem;
-    margin-bottom: 0.5rem;
+    margin: 0.5rem 0;
 }
 
 .card-symbol {
@@ -261,19 +308,39 @@ body {
 }
 
 .card-name {
-    margin-top: 0.5rem;
-    color: #4b5563;
+    margin-top: 0.8rem;
+    margin-bottom: 0.3rem;
+    color: #222;
+    font-weight: bold;
+    font-size: 1rem;
+    text-align: center;
+    padding: 0 0.5rem;
+    max-width: 100%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
 }
 
 .back-button {
     background-color: #dc2626;
     color: white;
     border: none;
-    padding: 0.75rem;
+    padding: 0.75rem 1.2rem;
     font-size: 1.25rem;
     font-weight: bold;
     border-radius: 0.5rem;
-    margin-top: 1rem;
+    margin-top: 1.5rem;
     cursor: pointer;
     width: 100%;
+    max-width: 400px;
+    margin-left: auto;
+    margin-right: auto;
+    box-shadow: 0 3px 6px rgba(0, 0, 0, 0.3);
+    transition: all 0.2s ease;
+}
+
+.back-button:hover {
+    background-color: #ef4444;
+    transform: translateY(-2px);
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.4);
 }
