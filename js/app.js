@@ -72,7 +72,13 @@ const gameState = {
     targetFoldAmount: 0, // 目標摺疊程度
     maxFoldAmount: Math.PI / 3, // 最大摺疊角度（60度）
     foldSegments: 10,   // 摺疊段數
-    foldAnimationSpeed: 0.15 // 摺疊動畫速度
+    foldAnimationSpeed: 0.15, // 摺疊動畫速度
+    // 新增滑動慣性所需的變數
+    rotationVelocity: 0, // 旋轉速度
+    frictionFactor: 0.97, // 摩擦系數（控制減速速率）
+    velocityThreshold: 0.001, // 速度閾值，低於此值視為停止
+    lastDragTime: 0,  // 最後拖曳時間戳
+    dragInterval: 0   // 拖曳時間間隔
 };
 
 // DOM 元素參考
@@ -85,7 +91,7 @@ let drawButton;
 let scene, camera, renderer;
 let cardMesh;
 let animationFrameId;
-let stars = [];  // 新增：用於存儲星星
+let stars = [];  // 用於存儲星星
 
 // 初始化函數
 async function init() {
@@ -200,17 +206,31 @@ function handleDragStart(event) {
     gameState.isDragging = true;
     gameState.lastMouseX = event.clientX;
     gameState.lastMouseY = event.clientY;
+    gameState.lastDragTime = Date.now();
+    
+    // 開始新的拖曳時重置旋轉速度
+    gameState.rotationVelocity = 0;
 }
 
 // 處理拖曳移動
 function handleDragMove(event) {
     if (!gameState.isDragging || !cardMesh) return;
     
+    const currentTime = Date.now();
+    gameState.dragInterval = currentTime - gameState.lastDragTime;
+    
     const deltaX = event.clientX - gameState.lastMouseX;
     const deltaY = event.clientY - gameState.lastMouseY;
     
     // 處理左右旋轉
     cardMesh.rotation.y += deltaX * 0.01;
+    
+    // 計算旋轉速度（考慮時間間隔）
+    if (gameState.dragInterval > 0) {
+        // 使用平滑加權來計算速度，避免突然的變化
+        const newVelocity = deltaX * 0.01 / (gameState.dragInterval / 16.67); // 標準化為每幀的速度
+        gameState.rotationVelocity = gameState.rotationVelocity * 0.7 + newVelocity * 0.3;
+    }
     
     // 處理上下摺疊
     const foldDelta = deltaY * 0.003;
@@ -220,6 +240,7 @@ function handleDragMove(event) {
     
     gameState.lastMouseX = event.clientX;
     gameState.lastMouseY = event.clientY;
+    gameState.lastDragTime = currentTime;
 }
 
 // 處理拖曳結束
@@ -230,6 +251,8 @@ function handleDragEnd() {
     
     // 設置目標摺疊值為0，讓卡片漸漸恢復平整
     gameState.targetFoldAmount = 0;
+    
+    // 注意：不重置旋轉速度，讓卡片繼續旋轉並逐漸減速
 }
 
 // 處理觸控開始
@@ -239,6 +262,12 @@ function handleTouchStart(event) {
     gameState.isDragging = true;
     gameState.touchStartX = event.touches[0].clientX;
     gameState.touchStartY = event.touches[0].clientY;
+    gameState.lastMouseX = event.touches[0].clientX;
+    gameState.lastMouseY = event.touches[0].clientY;
+    gameState.lastDragTime = Date.now();
+    
+    // 開始新的觸控時重置旋轉速度
+    gameState.rotationVelocity = 0;
 }
 
 // 處理觸控移動
@@ -247,11 +276,21 @@ function handleTouchMove(event) {
     
     event.preventDefault();
     
-    const deltaX = event.touches[0].clientX - gameState.touchStartX;
-    const deltaY = event.touches[0].clientY - gameState.touchStartY;
+    const currentTime = Date.now();
+    gameState.dragInterval = currentTime - gameState.lastDragTime;
+    
+    const deltaX = event.touches[0].clientX - gameState.lastMouseX;
+    const deltaY = event.touches[0].clientY - gameState.lastMouseY;
     
     // 處理左右旋轉
     cardMesh.rotation.y += deltaX * 0.01;
+    
+    // 計算旋轉速度（考慮時間間隔）
+    if (gameState.dragInterval > 0) {
+        // 使用平滑加權來計算速度，避免突然的變化
+        const newVelocity = deltaX * 0.01 / (gameState.dragInterval / 16.67); // 標準化為每幀的速度
+        gameState.rotationVelocity = gameState.rotationVelocity * 0.7 + newVelocity * 0.3;
+    }
     
     // 處理上下摺疊
     const foldDelta = deltaY * 0.003;
@@ -259,13 +298,14 @@ function handleTouchMove(event) {
                                         Math.min(gameState.maxFoldAmount, 
                                                gameState.targetFoldAmount - foldDelta));
     
-    gameState.touchStartX = event.touches[0].clientX;
-    gameState.touchStartY = event.touches[0].clientY;
+    gameState.lastMouseX = event.touches[0].clientX;
+    gameState.lastMouseY = event.touches[0].clientY;
+    gameState.lastDragTime = currentTime;
 }
 
 // 處理觸控結束
 function handleTouchEnd() {
-    gameState.isDragging = false;
+    handleDragEnd();
 }
 
 // 動畫循環
@@ -274,8 +314,19 @@ function animate() {
     
     if (cardMesh) {
         if (!gameState.isDragging) {
-            // 只有在不拖曳時才自動旋轉
-            cardMesh.rotation.y += 0.01;
+            // 應用慣性旋轉：如果不在拖曳中，根據當前旋轉速度繼續旋轉
+            if (Math.abs(gameState.rotationVelocity) > gameState.velocityThreshold) {
+                // 應用旋轉
+                cardMesh.rotation.y += gameState.rotationVelocity;
+                
+                // 應用摩擦力減緩旋轉速度
+                gameState.rotationVelocity *= gameState.frictionFactor;
+                
+                // 如果速度非常小，則將其設為0
+                if (Math.abs(gameState.rotationVelocity) < gameState.velocityThreshold) {
+                    gameState.rotationVelocity = 0;
+                }
+            }
         }
         // 每幀更新摺疊效果
         updateCardFold();
@@ -464,8 +515,6 @@ function getSuitSymbol(suit) {
     }
 }
 
-// 從 collection.js 導入，保留此函數以供卡牌創建使用
-
 // 修改抽卡功能
 async function drawCard() {
     if (gameState.isDrawing) return;
@@ -515,6 +564,9 @@ function animateCard(newCardMesh) {
     // 將卡片添加到場景
     scene.add(newCardMesh);
     cardMesh = newCardMesh;
+    
+    // 重置旋轉速度
+    gameState.rotationVelocity = 0;
     
     // 設置卡片的初始位置和旋轉
     cardMesh.position.set(0, -10, 0);
@@ -571,8 +623,6 @@ function updateCurrentCardDisplay(card) {
         </span>
     `;
 }
-
-
 
 // 更新卡片摺疊效果
 function updateCardFold() {
