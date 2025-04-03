@@ -314,6 +314,14 @@ function createProgressBar(current, target) {
 // 更新當前卡片顯示
 function updateCurrentCardDisplay(card) {
     currentCardDisplay.style.display = 'block';
+
+    // 計算抽中機率
+    const totalVotes = cardTypes.reduce((sum, c) => {
+        const votes = parseInt(c.voteCount?.toString().replace(/,/g, '') || '0');
+        return sum + votes;
+    }, 0);
+    const cardVotes = parseInt(card.voteCount?.toString().replace(/,/g, '') || '0');
+    const probability = ((cardVotes / totalVotes) * 100).toFixed(2);
     
     const remainingDays = card.endDate ? calculateRemainingDays(card.endDate) : null;
     const isInProgress = card.recallWebsite && remainingDays !== null && remainingDays > 0;
@@ -323,8 +331,11 @@ function updateCurrentCardDisplay(card) {
     const progressBar = createProgressBar(card.currentCount, card.targetCount);
     
     let cardInfo = `
-        <p>抽到 <span class=\"${card.color === 'red' ? 'red' : 'black'}\">${card.person || card.name}</span></p>
-        <p>目前持有：${card.count} 張</p>
+        <div style="position: relative;">
+            <div class="probability-badge">${probability}%</div>
+            <p>抽到 <span class=\"${card.color === 'red' ? 'red' : 'black'}\">${card.person || card.name}</span></p>
+            <p>目前持有：${card.count} 張</p>
+        </div>
     `;
     
     if (isInProgress) {
