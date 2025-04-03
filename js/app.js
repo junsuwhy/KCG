@@ -63,7 +63,8 @@ async function loadCardsFromCSV() {
                             return null;
                         }
                     })() : null,
-                    recallWebsite: columns[14] !== '#N/A' ? columns[14] : null
+                    recallWebsite: columns[14] !== '#N/A' ? columns[14] : null,
+                    voteCount: columns[15] && columns[15] !== '#N/A' ? columns[15] : '0'
                 });
             }
         }
@@ -172,9 +173,24 @@ async function drawCard() {
     drawButton.disabled = true;
     drawButton.textContent = '抽牌中...';
     
-    // 隨機選擇一張卡
-    const randomIndex = Math.floor(Math.random() * cardTypes.length);
-    const newCard = { ...cardTypes[randomIndex], id: Date.now() };
+    // 計算總投票數
+    const totalVotes = cardTypes.reduce((sum, card) => {
+        const votes = parseInt(card.voteCount?.toString().replace(/,/g, '') || '0');
+        return sum + votes;
+    }, 0);
+    
+    // 生成一個0到總投票數之間的隨機數
+    const randomVote = Math.random() * totalVotes;
+    
+    // 根據投票數權重選擇卡片
+    let accumulator = 0;
+    const selectedCard = cardTypes.find(card => {
+        const votes = parseInt(card.voteCount?.toString().replace(/,/g, '') || '0');
+        accumulator += votes;
+        return randomVote <= accumulator;
+    }) || cardTypes[0]; // 預設值以防萬一
+    
+    const newCard = { ...selectedCard, id: Date.now() };
     
     // 更新現有卡片
     gameState.cards.push(newCard);
