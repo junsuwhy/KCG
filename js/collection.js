@@ -348,26 +348,13 @@ function updateCollectionModal() {
             questionMark.textContent = '?';
             placeholderContainer.appendChild(questionMark);
             
-            // 顯示人物名稱
-            const personName = document.createElement('div');
-            personName.style.textAlign = 'center';
-            personName.style.width = '100%';
-            personName.style.fontSize = '0.8rem';
-            personName.style.color = 'rgba(255, 255, 255, 0.6)';
-            personName.style.padding = '0 0.2rem';
-            personName.style.whiteSpace = 'nowrap';
-            personName.style.overflow = 'hidden';
-            personName.style.textOverflow = 'ellipsis';
-            personName.textContent = cardType.person || cardType.name;
-            
             // 未收集文字
             const placeholderText = document.createElement('div');
             placeholderText.textContent = '未收集';
             placeholderText.style.fontSize = '0.7rem';
             placeholderText.style.marginTop = '0.3rem';
             placeholderText.style.color = 'rgba(255, 255, 255, 0.4)';
-            
-            placeholderContainer.appendChild(personName);
+
             placeholderContainer.appendChild(placeholderText);
             
             cardItem.appendChild(placeholderContainer);
