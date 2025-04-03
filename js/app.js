@@ -47,7 +47,23 @@ async function loadCardsFromCSV() {
                     person: columns[4],
                     title: columns[5],
                     quote: columns[6],
-                    imageFile: imageFileName
+                    imageFile: imageFileName,
+                    startDate: columns[10] !== '#N/A' ? columns[10] : null,
+                    endDate: columns[11] !== '#N/A' ? columns[11] : null,targetCount: columns[12] && columns[12] !== '#N/A' ? (function() {
+                        try {
+                            return parseInt((columns[12] || '0').toString().replace(/,/g, ''));
+                        } catch(e) {
+                            return null;
+                        }
+                    })() : null,
+                    currentCount: columns[13] && columns[13] !== '#N/A' ? (function() {
+                        try {
+                            return parseInt((columns[13] || '0').toString().replace(/,/g, ''));
+                        } catch(e) {
+                            return null;
+                        }
+                    })() : null,
+                    recallWebsite: columns[14] !== '#N/A' ? columns[14] : null
                 });
             }
         }
@@ -187,14 +203,122 @@ async function drawCard() {
     animateCard(newCardMesh);
 }
 
+// 計算剩餘天數
+function calculateRemainingDays(endDateStr) {
+    if (!endDateStr) return null;
+    
+    // 處理日期格式 (轉換 2025/4/26 格式為 2025-04-26)
+    let formattedDate = endDateStr;
+    if (endDateStr.includes('/')) {
+        const parts = endDateStr.split('/');
+        const year = parts[0];
+        const month = parts[1].padStart(2, '0');
+        const day = parts[2].padStart(2, '0');
+        formattedDate = `${year}-${month}-${day}`;
+    }
+    
+    const endDate = new Date(formattedDate);
+    const today = new Date();
+    
+    // 設定時間為午夜以確保計算天數準確
+    today.setHours(0, 0, 0, 0);
+    endDate.setHours(0, 0, 0, 0);
+    
+    const timeDiff = endDate.getTime() - today.getTime();
+    const dayDiff = Math.ceil(timeDiff / (1000 * 3600 * 24));
+    
+    return dayDiff;
+}
+
+// 建立進度條
+function createProgressBar(current, target) {
+    // 檢查參數是否有效，如果無效則返回空字符串
+    if (current === null || target === null || isNaN(current) || isNaN(target) || target <= 0) {
+        return '';
+    }
+    
+    try {
+        // 確保數值為數字
+        current = Number(current) || 0;
+        target = Number(target) || 1; // 避免除以零
+        
+        // 計算百分比，最大為100%
+        const percent = Math.min(100, Math.round((current / target) * 100));
+        const filledBlocks = Math.round(percent / 10);
+        const emptyBlocks = 10 - filledBlocks;
+        
+        // 創建進度條字符串
+        let progressBar = '[';
+        progressBar += '='.repeat(Math.max(0, filledBlocks)); // 防止負數
+        progressBar += '　'.repeat(Math.max(0, emptyBlocks)); // 防止負數
+        progressBar += ']';
+        
+        return progressBar;
+    } catch (e) {
+        console.error('進度條生成錯誤:', e);
+        return '[          ]'; // 返回空進度條
+    }
+}
+
 // 更新當前卡片顯示
 function updateCurrentCardDisplay(card) {
     currentCardDisplay.style.display = 'block';
-    currentCardDisplay.innerHTML = `
-        抽到了: <span class="${card.color === 'red' ? 'red' : 'black'}">
-            ${card.name}
-        </span>
+    
+    const remainingDays = card.endDate ? calculateRemainingDays(card.endDate) : null;
+    const isInProgress = card.recallWebsite && remainingDays !== null && remainingDays > 0;
+    const progressPercent = card.targetCount && card.currentCount 
+        ? Math.min(100, Math.round((card.currentCount / card.targetCount) * 100))
+        : null;
+    const progressBar = createProgressBar(card.currentCount, card.targetCount);
+    
+    let cardInfo = `
+        <p>抽到 <span class=\"${card.color === 'red' ? 'red' : 'black'}\">${card.person || card.name}</span></p>
     `;
+    
+    if (isInProgress) {
+        cardInfo += `<p>目前罷免進行中</p>`;
+        cardInfo += `<p>距離罷免收件截止日剩 <span class=\"red-large\">${remainingDays}</span> 天</p>`;
+        
+        if (progressPercent !== null) {
+            cardInfo += `<p>目標進度：${progressPercent}%</p>`;
+            cardInfo += `<div class=\"progress-bar\">${progressBar}</div>`;
+        }
+        
+        cardInfo += `<p><a href=\"${card.recallWebsite}\" target=\"_blank\" class=\"recall-link\">前往罷免資訊</a></p>`;
+    }
+    
+    currentCardDisplay.innerHTML = cardInfo;
+    
+    // 添加必要的CSS
+    const style = document.createElement('style');
+    style.textContent = `
+        .red-large {
+            color: #dc2626;
+            font-size: 1.5rem;
+            font-weight: bold;
+        }
+        .progress-bar {
+            font-family: monospace;
+            font-size: 1.2rem;
+            margin: 0.5rem 0;
+            letter-spacing: 2px;
+        }
+        .recall-link {
+            display: inline-block;
+            padding: 0.5rem 1rem;
+            background-color: #dc2626;
+            color: white;
+            text-decoration: none;
+            border-radius: 0.25rem;
+            margin-top: 0.5rem;
+            font-weight: bold;
+            transition: background-color 0.2s;
+        }
+        .recall-link:hover {
+            background-color: #b91c1c;
+        }
+    `;
+    document.head.appendChild(style);
 }
 
 // 啟動遊戲
