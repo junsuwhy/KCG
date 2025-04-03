@@ -427,3 +427,30 @@ body {
     transform: translateY(-2px);
     box-shadow: 0 4px 8px rgba(0, 0, 0, 0.4);
 }
+
+/* 添加必要的CSS */
+.red-large {
+    color: #dc2626;
+    font-size: 1.5rem;
+    font-weight: bold;
+}
+.progress-bar {
+    font-family: monospace;
+    font-size: 1.2rem;
+    margin: 0.5rem 0;
+    letter-spacing: 2px;
+}
+.recall-link {
+    display: inline-block;
+    padding: 0.5rem 1rem;
+    background-color: #dc2626;
+    color: white;
+    text-decoration: none;
+    border-radius: 0.25rem;
+    margin-top: 0.5rem;
+    font-weight: bold;
+    transition: background-color 0.2s;
+}
+.recall-link:hover {
+    background-color: #b91c1c;
+}

@@ -48,6 +48,24 @@ async function loadCardsFromCSV() {
                                 imageFileName = `${suit}-${value}.jpg`.toLowerCase();
                             }
                             
+                            // 處理 startDate - 檢查是否為 '#N/A'
+                            const startDate = (function() {
+                                const date = row.startDate || row['開始日期'];
+                                return (!date || date === '#N/A') ? null : date;
+                            })();
+
+                            // 處理 endDate - 檢查是否為 '#N/A'
+                            const endDate = (function() {
+                                const date = row.endDate || row['截止日期'];
+                                return (!date || date === '#N/A') ? null : date;
+                            })();
+
+                            // 處理 recallWebsite - 檢查是否為 '#N/A'
+                            const recallWebsite = (function() {
+                                const website = row.recallWebsite || row['罷團官方網站'];
+                                return (!website || website === '#N/A') ? null : website;
+                            })();
+                            
                             cardTypes.push({
                                 id: index + 1,
                                 name,
@@ -58,8 +76,8 @@ async function loadCardsFromCSV() {
                                 title: row.title || row['稱號'],
                                 quote: row.quote || row['標語'],
                                 imageFile: imageFileName,
-                                startDate: row.startDate || row['開始日期'],
-                                endDate: row.endDate || row['截止日期'],
+                                startDate: startDate,
+                                endDate: endDate,
                                 targetCount: (function() {
                                     const count = row.targetCount || row['目標人數'];
                                     if (!count || count === '#N/A') return null;
@@ -78,7 +96,7 @@ async function loadCardsFromCSV() {
                                         return null;
                                     }
                                 })(),
-                                recallWebsite: row.recallWebsite || row['罷團官方網站'],
+                                recallWebsite: recallWebsite,
                                 voteCount: row.voteCount || row['投票人數'] || '0'
                             });
                         }
@@ -323,36 +341,6 @@ function updateCurrentCardDisplay(card) {
     
     currentCardDisplay.innerHTML = cardInfo;
     
-    // 添加必要的CSS
-    const style = document.createElement('style');
-    style.textContent = `
-        .red-large {
-            color: #dc2626;
-            font-size: 1.5rem;
-            font-weight: bold;
-        }
-        .progress-bar {
-            font-family: monospace;
-            font-size: 1.2rem;
-            margin: 0.5rem 0;
-            letter-spacing: 2px;
-        }
-        .recall-link {
-            display: inline-block;
-            padding: 0.5rem 1rem;
-            background-color: #dc2626;
-            color: white;
-            text-decoration: none;
-            border-radius: 0.25rem;
-            margin-top: 0.5rem;
-            font-weight: bold;
-            transition: background-color 0.2s;
-        }
-        .recall-link:hover {
-            background-color: #b91c1c;
-        }
-    `;
-    document.head.appendChild(style);
 }
 
 // 啟動遊戲
