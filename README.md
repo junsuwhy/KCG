@@ -10,7 +10,57 @@
 - 本地存儲功能，保存抽取的卡片記錄
 - 響應式設計，適合手機和桌面瀏覽器
 
-## 如何運行
+## 環境需求
+
+- Node.js (建議使用 14.x 或更新版本)
+- npm 或 yarn
+
+## 如何在本機測試執行
+
+### 環境設定
+
+1. 首先確保你已安裝 Node.js 和 npm：
+   ```bash
+   node -v
+   npm -v
+   ```
+
+2. 克隆或下載專案到本地：
+   ```bash
+   git clone git@github.com:junsuwhy/KCG.git
+   cd KCG
+   ```
+
+3. 安裝專案依賴：
+   ```bash
+   npm install
+   ```
+
+### 使用 Vite 運行專案
+
+1. 啟動開發伺服器：
+   ```bash
+   npm run dev
+   ```
+
+2. 開發伺服器啟動後，打開瀏覽器訪問以下網址：
+   ```
+   http://localhost:5173
+   ```
+
+### 打包專案
+
+如果需要打包專案以便部署到生產環境：
+
+```bash
+npm run predeploy
+```
+
+打包後的檔案將會在 `build` 目錄中。
+
+## 舊方法：直接使用靜態檔案
+
+如果不想使用 Node.js 環境，也可以採用以下方法：
 
 1. 下載Three.js庫：
    - 訪問 https://threejs.org/build/three.min.js
@@ -19,25 +69,28 @@
 
 2. 在本地運行：
    - 使用本地伺服器運行此專案（如 Live Server 擴展、Python 的 http.server 等）
-   - 直接開啟 `index.html` 檔案（某些瀏覽器可能需要啟用本地檔案存取權限）
+   - 或直接開啟 `index.html` 檔案（某些瀏覽器可能需要啟用本地檔案存取權限）
 
 ## 檔案結構
 
 ```
-KMTPoker/
+KCG/
 │
 ├── index.html          # 主HTML檔案
 ├── css/
 │   └── style.css       # 樣式表
 ├── js/
-│   ├── three.min.js    # Three.js庫檔案
-│   └── app.js          # 主要應用程式邏輯
+│   ├── app.js          # 主要應用程式邏輯
+│   └── collection.js   # 集卡書系統邏輯
+├── images/             # 卡片圖片和圖示
+├── node_modules/       # NPM依賴包
+├── package.json        # 專案配置文件
 └── README.md           # 說明文件
 ```
 
 ## 自定義
 
-- 要新增更多卡牌類型，請編輯 `app.js` 檔案中的 `cardTypes` 陣列
+- 要新增更多卡牌類型，請編輯 `app.js` 檔案中的 `loadCardsFromCSV` 函數
 - 要修改卡牌外觀，可以調整 `createCardTexture` 函數
 - 要更改界面樣式，編輯 `style.css` 檔案
 
