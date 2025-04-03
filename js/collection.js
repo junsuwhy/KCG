@@ -192,11 +192,17 @@ function updateCollectionModal() {
         return;
     }
     
-    // 創建已收集卡片的映射，以便快速查找
+    // 創建已收集卡片的映射，以便快速查找，並計算每種卡片的數量
     const collectedCards = {};
     gameState.cards.forEach(card => {
-        // 使用卡片名稱作為鍵值
-        collectedCards[card.name] = card;
+        if (!collectedCards[card.name]) {
+            collectedCards[card.name] = {
+                ...card,
+                count: 1
+            };
+        } else {
+            collectedCards[card.name].count++;
+        }
     });
     
     // 計算收集統計信息
@@ -234,6 +240,13 @@ function updateCollectionModal() {
             cardContent.style.flexDirection = 'column';
             cardContent.style.justifyContent = 'center';
             cardContent.style.alignItems = 'center';
+
+            // 添加卡片數量標記
+            const countBadge = document.createElement('div');
+            countBadge.className = 'card-count-badge';
+            countBadge.textContent = `×${card.count}`;
+            cardContent.appendChild(countBadge);
+
             cardItem.appendChild(cardContent);
             
             // 左上角花色和數字

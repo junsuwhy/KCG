@@ -179,6 +179,10 @@ async function drawCard() {
     // 更新現有卡片
     gameState.cards.push(newCard);
     gameState.currentCard = newCard;
+
+    // 計算這張卡的數量
+    const cardCount = gameState.cards.filter(card => card.name === newCard.name).length;
+    newCard.count = cardCount;
     
     // 檢查是否為新種類的卡片
     const isNewCardType = !gameState.uniqueCardTypes.has(newCard.name);
@@ -262,6 +266,7 @@ function updateCurrentCardDisplay(card) {
     
     let cardInfo = `
         <p>抽到 <span class=\"${card.color === 'red' ? 'red' : 'black'}\">${card.person || card.name}</span></p>
+        <p>目前持有：${card.count} 張</p>
     `;
     
     if (isInProgress) {
