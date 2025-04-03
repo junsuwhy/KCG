@@ -1,7 +1,7 @@
 // 集卡書系統
 // 負責集卡書的顯示、管理和本地存儲
 
-// 導入卡牌類型數據
+// 導入卡牌類型數據和函數
 import * as appModule from './app.js';
 
 // 提供的介面
@@ -205,42 +205,8 @@ function showCardDetail(card) {
     const cardCount = gameState.cards.filter(c => c.name === card.name).length;
     card.count = cardCount;
     
-    // 計算抽中機率
-    const totalVotes = appModule.getCardTypes().reduce((sum, c) => {
-        const votes = parseInt(c.voteCount?.toString().replace(/,/g, '') || '0');
-        return sum + votes;
-    }, 0);
-    const cardVotes = parseInt(card.voteCount?.toString().replace(/,/g, '') || '0');
-    const probability = ((cardVotes / totalVotes) * 100).toFixed(2);
-    
-    // 更新卡片資訊顯示
-    currentCardDisplay.style.display = 'block';
-    
-    const remainingDays = card.endDate ? calculateRemainingDays(card.endDate) : null;
-    const isInProgress = card.recallWebsite && remainingDays !== null && remainingDays > 0;
-    
-    let cardInfo = `
-        <div style="position: relative;">
-            <div class="probability-badge">${probability}%</div>
-            <p>抽到 <span class="${card.color === 'red' ? 'red' : 'black'}">${card.person || card.name}</span></p>
-            <p>目前持有：${card.count} 張</p>
-        </div>
-    `;
-    
-    if (isInProgress) {
-        cardInfo += `<p>目前罷免進行中</p>`;
-        cardInfo += `<p>距離罷免收件截止日剩 <span class="red-large">${remainingDays}</span> 天</p>`;
-        
-        if (card.targetCount !== null && card.currentCount !== null) {
-            const progressPercent = Math.min(100, Math.round((card.currentCount / card.targetCount) * 100));
-            const remainingCount = card.targetCount - card.currentCount;
-            cardInfo += `<p>目標進度：${progressPercent}% 尚欠${remainingCount}份</p>`;
-        }
-        
-        cardInfo += `<p><a href="${card.recallWebsite}" target="_blank" class="recall-link">前往罷免資訊</a></p>`;
-    }
-    
-    currentCardDisplay.innerHTML = cardInfo;
+    // 使用 app.js 的 updateCurrentCardDisplay 函數來顯示卡片
+    appModule.updateCurrentCardDisplay(card);
     
     // 將抽牌按鈕變成返回集卡書按鈕
     drawButton.textContent = '返回集卡書';

@@ -2,7 +2,7 @@ import * as THREE from '../node_modules/three/build/three.module.js';
 import { setupCollectionSystem, toggleCollection, updateCollectionButton, updateCollectionModal, saveCardsToStorage, loadCardsFromStorage, backToCollection } from './collection.js';
 import { initThreeJS, createCardMesh, animateCard, cleanup } from './animation.js';
 
-// 導出卡牌類型資料
+// 導出卡牌類型資料和函數
 export function getCardTypes() {
     return [...cardTypes]; // 返回卡牌類型的混製，避免直接修改原始數據
 }
@@ -311,8 +311,8 @@ function createProgressBar(current, target) {
     }
 }
 
-// 更新當前卡片顯示
-function updateCurrentCardDisplay(card) {
+// 更新當前卡片顯示 - 導出供 collection.js 使用
+export function updateCurrentCardDisplay(card) {
     currentCardDisplay.style.display = 'block';
 
     // 計算抽中機率
@@ -333,25 +333,24 @@ function updateCurrentCardDisplay(card) {
     let cardInfo = `
         <div style="position: relative;">
             <div class="probability-badge">${probability}%</div>
-            <p>抽到 <span class=\"${card.color === 'red' ? 'red' : 'black'}\">${card.person || card.name}</span></p>
+            <p>抽到 <span class="${card.color === 'red' ? 'red' : 'black'}">${card.person || card.name}</span></p>
             <p>目前持有：${card.count} 張</p>
         </div>
     `;
     
     if (isInProgress) {
         cardInfo += `<p>目前罷免進行中</p>`;
-        cardInfo += `<p>距離罷免收件截止日剩 <span class=\"red-large\">${remainingDays}</span> 天</p>`;
+        cardInfo += `<p>距離罷免收件截止日剩 <span class="red-large">${remainingDays}</span> 天</p>`;
         
         if (card.targetCount !== null && card.currentCount !== null) {
             const remainingCount = card.targetCount - card.currentCount;
             cardInfo += `<p>目標進度：${progressPercent}% 尚欠${remainingCount}份</p>`;
         }
         
-        cardInfo += `<p><a href=\"${card.recallWebsite}\" target=\"_blank\" class=\"recall-link\">前往罷免資訊</a></p>`;
+        cardInfo += `<p><a href="${card.recallWebsite}" target="_blank" class="recall-link">前往罷免資訊</a></p>`;
     }
     
     currentCardDisplay.innerHTML = cardInfo;
-    
 }
 
 // 使抽牌函數可以被全局訪問做為事件處理
