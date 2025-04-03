@@ -12,64 +12,88 @@ export function getCardTypes() {
 // 卡牌種類
 let cardTypes = [];
 
-// 從 CSV 讀取卡牌資料
+// 從 CSV 讀取卡牌資料 - 使用 PapaParse
 async function loadCardsFromCSV() {
     try {
         const csvUrl = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vSniLwHat28siwAkCjIOdq9C5WzeG3C2WN7l5XkHNrHu0UezGTz3ZPvu9hNNPqmfefx8qUNHOFuU9uX/pub?output=csv';
         const response = await fetch(csvUrl);
         const csvText = await response.text();
-        const lines = csvText.split('\n').filter(line => line.trim());
         
-        // 跳過標題行
-        for (let i = 1; i < lines.length; i++) {
-            const line = lines[i];
-            const columns = line.split(',');
-            const name = columns[0];
-            const suit = columns[1];
-            const color = columns[2];
-            const value = columns[3];
-            
-            if (name && suit && color && value) {
-                // 修正圖片檔名格式
-                let imageFileName;
-                if (suit === 'joker') {
-                    imageFileName = `joker-${color}.jpg`;
-                } else {
-                    imageFileName = `${suit}-${value}.jpg`.toLowerCase();
+        // 使用 PapaParse 解析 CSV
+        return new Promise((resolve, reject) => {
+            Papa.parse(csvText, {
+                header: true, // 使用第一行作為標題
+                dynamicTyping: true, // 自動轉換數字等類型
+                skipEmptyLines: true, // 跳過空行
+                complete: function(results) {
+                    // 處理解析後的資料
+                    const data = results.data;
+                    
+                    // 清空現有牌組數據
+                    cardTypes = [];
+                    
+                    // 逐行處理 CSV 資料
+                    data.forEach((row, index) => {
+                        const name = row.name || row['花色數字'];
+                        const suit = row.suit || row['花色'];
+                        const color = row.color || row['顏色'];
+                        const value = row.value || row['數字'];
+                        
+                        if (name && suit && color && value) {
+                            // 修正圖片檔名格式
+                            let imageFileName;
+                            if (suit === 'joker') {
+                                imageFileName = `joker-${color}.jpg`;
+                            } else {
+                                imageFileName = `${suit}-${value}.jpg`.toLowerCase();
+                            }
+                            
+                            cardTypes.push({
+                                id: index + 1,
+                                name,
+                                color,
+                                suit,
+                                value,
+                                person: row.person || row['人物'],
+                                title: row.title || row['稱號'],
+                                quote: row.quote || row['標語'],
+                                imageFile: imageFileName,
+                                startDate: row.startDate || row['開始日期'],
+                                endDate: row.endDate || row['截止日期'],
+                                targetCount: (function() {
+                                    const count = row.targetCount || row['目標人數'];
+                                    if (!count || count === '#N/A') return null;
+                                    try {
+                                        return parseInt(count.toString().replace(/,/g, ''));
+                                    } catch(e) {
+                                        return null;
+                                    }
+                                })(),
+                                currentCount: (function() {
+                                    const count = row.currentCount || row['目前連署數'];
+                                    if (!count || count === '#N/A') return null;
+                                    try {
+                                        return parseInt(count.toString().replace(/,/g, ''));
+                                    } catch(e) {
+                                        return null;
+                                    }
+                                })(),
+                                recallWebsite: row.recallWebsite || row['罷團官方網站'],
+                                voteCount: row.voteCount || row['投票人數'] || '0'
+                            });
+                        }
+                    });
+                    resolve(cardTypes);
+                },
+                error: function(error) {
+                    console.error('解析 CSV 檔案失敗:', error);
+                    reject(error);
                 }
-                
-                cardTypes.push({
-                    id: i,
-                    name,
-                    color,
-                    suit,
-                    value,
-                    person: columns[4],
-                    title: columns[5],
-                    quote: columns[6],
-                    imageFile: imageFileName,
-                    startDate: columns[10] !== '#N/A' ? columns[10] : null,
-                    endDate: columns[11] !== '#N/A' ? columns[11] : null,targetCount: columns[12] && columns[12] !== '#N/A' ? (function() {
-                        try {
-                            return parseInt((columns[12] || '0').toString().replace(/,/g, ''));
-                        } catch(e) {
-                            return null;
-                        }
-                    })() : null,
-                    currentCount: columns[13] && columns[13] !== '#N/A' ? (function() {
-                        try {
-                            return parseInt((columns[13] || '0').toString().replace(/,/g, ''));
-                        } catch(e) {
-                            return null;
-                        }
-                    })() : null,
-                    recallWebsite: columns[14] !== '#N/A' ? columns[14] : null,
-                    voteCount: columns[15] && columns[15] !== '#N/A' ? columns[15] : '0'
-                });
-            }
-        }
+            });
+        });
     } catch (error) {
         console.error('讀取 CSV 檔案失敗:', error);
+        throw error;
     }
 }
 
