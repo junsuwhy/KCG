@@ -60,7 +60,7 @@ function createCollectionButton() {
     collectionButton.setAttribute('title', '集卡書');
     
     // 使用 fetch 載入 SVG
-    fetch('images/book.svg')
+    fetch('.images/book.svg')
         .then(response => response.text())
         .then(svgContent => {
             // 移除任何可能導致問題的 DOCTYPE 或註釋
@@ -393,7 +393,7 @@ function updateCollectionModal() {
             try {
                 const cardImage = document.createElement('img');
                 cardImage.className = 'card-image';
-                cardImage.src = `/images/${card.imageFile}`;
+                cardImage.src = `./images/${card.imageFile}`;
                 cardImage.alt = card.name;
                 cardImage.style.margin = '0 auto'; // 居中
                 cardImage.style.display = 'block';

@@ -263,7 +263,7 @@ export function createCardTexture(cardData) {
         ctx.fillRect(0, 0, 512, 712);
         
         const textureLoader = new THREE.TextureLoader();
-        const imagePath = `/images/${cardData.imageFile}`;
+        const imagePath = `./images/${cardData.imageFile}`;
         
         textureLoader.load(
             imagePath,
