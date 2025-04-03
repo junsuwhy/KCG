@@ -1,6 +1,11 @@
 import * as THREE from '../node_modules/three/build/three.module.js';
 import { setupCollectionSystem, toggleCollection, updateCollectionButton, updateCollectionModal, saveCardsToStorage, loadCardsFromStorage } from './collection.js';
 
+// 導出卡牌類型資料
+export function getCardTypes() {
+    return [...cardTypes]; // 返回卡牌類型的混製，避免直接修改原始數據
+}
+
 // 卡牌遊戲主要邏輯
 
 // 卡牌種類

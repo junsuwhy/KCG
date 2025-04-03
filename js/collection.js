@@ -1,6 +1,9 @@
 // 集卡書系統
 // 負責集卡書的顯示、管理和本地存儲
 
+// 導入卡牌類型數據
+import * as appModule from './app.js';
+
 // 提供的介面
 export {
     setupCollectionSystem,
@@ -70,15 +73,28 @@ function createCollectionModal() {
     collectionModal.className = 'collection-modal';
     collectionModal.style.display = 'none';
     
+    // 集卡書頂部信息區域
+    const collectionInfo = document.createElement('div');
+    collectionInfo.className = 'collection-info';
+    
     const collectionTitle = document.createElement('h2');
     collectionTitle.className = 'collection-title';
     collectionTitle.textContent = '集卡書';
-    collectionModal.appendChild(collectionTitle);
+    collectionInfo.appendChild(collectionTitle);
     
+    // 收集統計信息
+    const collectionStats = document.createElement('div');
+    collectionStats.className = 'collection-stats';
+    collectionInfo.appendChild(collectionStats);
+    
+    collectionModal.appendChild(collectionInfo);
+    
+    // 卡片網格
     const collectionGrid = document.createElement('div');
     collectionGrid.className = 'collection-grid';
     collectionModal.appendChild(collectionGrid);
     
+    // 返回按鈕
     const backButton = document.createElement('button');
     backButton.className = 'back-button';
     backButton.textContent = '返回遊戲';
@@ -150,9 +166,96 @@ function getSuitSymbol(suit) {
 // 更新集卡書內容
 function updateCollectionModal() {
     const collectionGrid = collectionModal.querySelector('.collection-grid');
+    const collectionStats = collectionModal.querySelector('.collection-stats');
     collectionGrid.innerHTML = '';
     
-    if (gameState.cards.length === 0) {
+    // 使用 cardTypes 從 app.js 獲取所有卡牌種類
+    const allCardTypes = appModule.getCardTypes ? appModule.getCardTypes() : [];
+    
+    // 如果無法獲取 cardTypes，則顯示錯誤信息
+    if (allCardTypes.length === 0) {
+        const errorMessage = document.createElement('div');
+        errorMessage.style.gridColumn = '1 / -1';
+        errorMessage.style.textAlign = 'center';
+        errorMessage.style.color = 'white';
+        errorMessage.style.fontSize = '1.25rem';
+        errorMessage.textContent = '卡片加載失敗，請重新整理頁面';
+        collectionGrid.appendChild(errorMessage);
+        return;
+    }
+    
+    // 創建已收集卡片的映射，以便快速查找
+    const collectedCards = {};
+    gameState.cards.forEach(card => {
+        // 使用卡片名稱作為鍵值
+        collectedCards[card.name] = card;
+    });
+    
+    // 計算收集統計信息
+    const totalCards = allCardTypes.length;
+    const collectedCount = Object.keys(collectedCards).length;
+    const completionPercentage = Math.round((collectedCount / totalCards) * 100);
+    
+    // 更新統計信息
+    collectionStats.textContent = `已收集: ${collectedCount}/${totalCards} (${completionPercentage}%)`;
+    
+    // 按CSV順序顯示所有卡片（有序號從1開始）
+    allCardTypes.forEach((cardType, index) => {
+        const cardNumber = index + 1; // CSV編號從1開始
+        const isCollected = collectedCards[cardType.name] !== undefined;
+        
+        const cardItem = document.createElement('div');
+        cardItem.className = isCollected ? 'card-item' : 'card-item empty';
+        
+        // 顯示卡片編號
+        const cardNumberEl = document.createElement('div');
+        cardNumberEl.className = 'card-number';
+        cardNumberEl.textContent = `#${cardNumber}`;
+        cardItem.appendChild(cardNumberEl);
+        
+        if (isCollected) {
+            const card = collectedCards[cardType.name];
+            
+            // 顯示卡片圖片（如果有）
+            try {
+                const cardImage = document.createElement('img');
+                cardImage.className = 'card-image';
+                cardImage.src = `/images/${card.imageFile}`;
+                cardImage.alt = card.name;
+                cardImage.onerror = () => {
+                    // 如果圖片載入失敗，顯示花色和數字
+                    cardImage.style.display = 'none';
+                    const cardSymbol = document.createElement('div');
+                    cardSymbol.className = `card-symbol ${card.color === 'red' ? 'symbol-red' : ''}`;
+                    cardSymbol.textContent = `${getSuitSymbol(card.suit)} ${card.value}`;
+                    cardItem.insertBefore(cardSymbol, cardImage.nextSibling);
+                };
+                cardItem.appendChild(cardImage);
+            } catch (e) {
+                // 如果圖片載入失敗，顯示花色和數字
+                const cardSymbol = document.createElement('div');
+                cardSymbol.className = `card-symbol ${card.color === 'red' ? 'symbol-red' : ''}`;
+                cardSymbol.textContent = `${getSuitSymbol(card.suit)} ${card.value}`;
+                cardItem.appendChild(cardSymbol);
+            }
+            
+            // 顯示卡片名稱
+            const cardName = document.createElement('div');
+            cardName.className = 'card-name';
+            cardName.textContent = card.name;
+            cardItem.appendChild(cardName);
+        } else {
+            // 未收集的卡片
+            const placeholderText = document.createElement('div');
+            placeholderText.textContent = '未收集';
+            cardItem.appendChild(placeholderText);
+        }
+        
+        collectionGrid.appendChild(cardItem);
+    });
+    
+    // 如果沒有卡片類型但還是沒有任何收集卡片的情況
+    if (gameState.cards.length === 0 && allCardTypes.length === 0) {
         const emptyMessage = document.createElement('div');
         emptyMessage.style.gridColumn = '1 / -1';
         emptyMessage.style.textAlign = 'center';
@@ -160,26 +263,7 @@ function updateCollectionModal() {
         emptyMessage.style.fontSize = '1.25rem';
         emptyMessage.textContent = '尚未收集到任何卡片';
         collectionGrid.appendChild(emptyMessage);
-        return;
     }
-    
-    // 添加所有卡片
-    gameState.cards.forEach(card => {
-        const cardItem = document.createElement('div');
-        cardItem.className = 'card-item';
-        
-        const cardSymbol = document.createElement('div');
-        cardSymbol.className = `card-symbol ${card.color === 'red' ? 'symbol-red' : ''}`;
-        cardSymbol.textContent = `${getSuitSymbol(card.suit)} ${card.value}`;
-        cardItem.appendChild(cardSymbol);
-        
-        const cardName = document.createElement('div');
-        cardName.className = 'card-name';
-        cardName.textContent = card.name;
-        cardItem.appendChild(cardName);
-        
-        collectionGrid.appendChild(cardItem);
-    });
 }
 
 // 從本地存儲加載卡牌

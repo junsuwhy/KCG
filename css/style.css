@@ -166,11 +166,23 @@ body {
     left: 0;
     width: 100%;
     height: 100%;
-    background-color: rgba(0, 0, 0, 0.8);
+    background-color: rgba(0, 0, 0, 0.9);
     z-index: 20;
     padding: 1rem;
     display: flex;
     flex-direction: column;
+}
+
+.collection-info {
+    margin-bottom: 1rem;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.collection-stats {
+    font-size: 0.9rem;
+    color: rgba(255, 255, 255, 0.8);
 }
 
 .collection-title {
@@ -185,11 +197,18 @@ body {
     gap: 1rem;
     overflow-y: auto;
     flex: 1;
+    padding: 0.5rem;
 }
 
 @media (min-width: 768px) {
     .collection-grid {
-        grid-template-columns: repeat(3, 1fr);
+        grid-template-columns: repeat(4, 1fr);
+    }
+}
+
+@media (min-width: 1024px) {
+    .collection-grid {
+        grid-template-columns: repeat(6, 1fr);
     }
 }
 
@@ -202,6 +221,35 @@ body {
     flex-direction: column;
     align-items: center;
     box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+    position: relative;
+    min-height: 200px;
+}
+
+.card-item.empty {
+    background-color: rgba(255, 255, 255, 0.1);
+    border: 2px dashed rgba(255, 255, 255, 0.3);
+    box-shadow: none;
+    color: rgba(255, 255, 255, 0.5);
+    justify-content: center;
+}
+
+.card-item .card-number {
+    position: absolute;
+    top: 0.25rem;
+    left: 0.25rem;
+    font-size: 0.75rem;
+    background-color: rgba(0, 0, 0, 0.7);
+    color: white;
+    padding: 0.1rem 0.3rem;
+    border-radius: 0.25rem;
+}
+
+.card-item .card-image {
+    width: 100%;
+    height: 120px;
+    object-fit: cover;
+    border-radius: 0.25rem;
+    margin-bottom: 0.5rem;
 }
 
 .card-symbol {
