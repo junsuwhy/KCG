@@ -2,6 +2,8 @@ import * as THREE from 'three';
 
 // Three.js 相關狀態
 let scene, camera, renderer;
+// 將場景暴露為全局變數，供集卡書系統訪問
+window.scene = null;
 let cardMesh;
 let animationFrameId;
 let stars = [];  // 用於存儲星星
@@ -18,6 +20,7 @@ export function initThreeJS(rootElement, state) {
     
     // 創建場景
     scene = new THREE.Scene();
+    window.scene = scene; // 設置全局場景變數
     scene.background = new THREE.Color(0xf0f5ff);
     
     // 創建相機

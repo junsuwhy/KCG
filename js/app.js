@@ -1,5 +1,5 @@
 import * as THREE from '../node_modules/three/build/three.module.js';
-import { setupCollectionSystem, toggleCollection, updateCollectionButton, updateCollectionModal, saveCardsToStorage, loadCardsFromStorage } from './collection.js';
+import { setupCollectionSystem, toggleCollection, updateCollectionButton, updateCollectionModal, saveCardsToStorage, loadCardsFromStorage, backToCollection } from './collection.js';
 import { initThreeJS, createCardMesh, animateCard, cleanup } from './animation.js';
 
 // 導出卡牌類型資料
@@ -166,8 +166,8 @@ async function init() {
     // 初始化 Three.js
     initThreeJS(mountElement, gameState);
     
-    // 初始化集卡書系統
-    setupCollectionSystem(mountElement, gameState);
+    // 初始化集卡書系統 - 傳递卡片创建和按钮引用
+    setupCollectionSystem(mountElement, gameState, createCardMesh, animateCard, drawButton, currentCardDisplay, uiContainer);
     
     // 加載已收集的卡牌
     loadCardsFromStorage(gameState);
@@ -353,6 +353,9 @@ function updateCurrentCardDisplay(card) {
     currentCardDisplay.innerHTML = cardInfo;
     
 }
+
+// 使抽牌函數可以被全局訪問做為事件處理
+window.drawCard = drawCard;
 
 // 啟動遊戲
 document.addEventListener('DOMContentLoaded', init);

@@ -11,21 +11,37 @@ export {
     updateCollectionButton,
     updateCollectionModal,
     saveCardsToStorage,
-    loadCardsFromStorage
+    loadCardsFromStorage,
+    showCardDetail,
+    backToCollection
 };
 
 // DOM 元素參考
 let collectionButton;
 let collectionModal;
 let mountElement;
+let cardDetailView;  // 詳情視圖，已移除
 
-// 遊戲狀態對象，由主程式提供
+// 游戲狀態對象
+// 組件引用
 let gameState;
+let drawButton;
+let currentCardDisplay;
+let uiContainer;
+
+// 關聯到 app.js 的函數參考
+let createCardMeshFn;  // 創建卡片模型的函數
+let animateCardFn;    // 動畫顯示卡片的函數
 
 // 設定集卡書系統
-function setupCollectionSystem(mountEl, gameStateRef) {
+function setupCollectionSystem(mountEl, gameStateRef, createCardMesh, animateCard, drawBtnRef, currentCardDisplayRef, uiContainerRef) {
     mountElement = mountEl;
     gameState = gameStateRef;
+    createCardMeshFn = createCardMesh;  // 保存創建卡片模型的函數引用
+    animateCardFn = animateCard;        // 保存動畫顯示卡片的函數引用
+    drawButton = drawBtnRef;  // 抽牌按鈕引用
+    currentCardDisplay = currentCardDisplayRef;  // 當前卡片顯示引用
+    uiContainer = uiContainerRef;  // UI容器引用
     
     // 創建集卡書按鈕
     createCollectionButton();
@@ -155,6 +171,11 @@ function toggleCollection() {
         updateCollectionButton();
         updateCollectionModal();
         collectionModal.style.display = 'flex';
+        
+        // 如果正在顯示卡片詳情，重設為抽牌模式
+        if (gameState.viewingCardDetail) {
+            backToCollection();
+        }
     } else {
         collectionModal.style.display = 'none';
     }
@@ -169,6 +190,134 @@ function getSuitSymbol(suit) {
         case 'clubs': return '♣';
         default: return '';
     }
+}
+
+// 顯示卡片詳情
+function showCardDetail(card) {
+    // 設置狀態為正在查看卡片詳情
+    gameState.viewingCardDetail = true;
+    gameState.showCollection = false;
+    
+    // 隱藏集卡書
+    collectionModal.style.display = 'none';
+    
+    // 計算這張卡的數量
+    const cardCount = gameState.cards.filter(c => c.name === card.name).length;
+    card.count = cardCount;
+    
+    // 計算抽中機率
+    const totalVotes = appModule.getCardTypes().reduce((sum, c) => {
+        const votes = parseInt(c.voteCount?.toString().replace(/,/g, '') || '0');
+        return sum + votes;
+    }, 0);
+    const cardVotes = parseInt(card.voteCount?.toString().replace(/,/g, '') || '0');
+    const probability = ((cardVotes / totalVotes) * 100).toFixed(2);
+    
+    // 更新卡片資訊顯示
+    currentCardDisplay.style.display = 'block';
+    
+    const remainingDays = card.endDate ? calculateRemainingDays(card.endDate) : null;
+    const isInProgress = card.recallWebsite && remainingDays !== null && remainingDays > 0;
+    
+    let cardInfo = `
+        <div style="position: relative;">
+            <div class="probability-badge">${probability}%</div>
+            <p>抽到 <span class="${card.color === 'red' ? 'red' : 'black'}">${card.person || card.name}</span></p>
+            <p>目前持有：${card.count} 張</p>
+        </div>
+    `;
+    
+    if (isInProgress) {
+        cardInfo += `<p>目前罷免進行中</p>`;
+        cardInfo += `<p>距離罷免收件截止日剩 <span class="red-large">${remainingDays}</span> 天</p>`;
+        
+        if (card.targetCount !== null && card.currentCount !== null) {
+            const progressPercent = Math.min(100, Math.round((card.currentCount / card.targetCount) * 100));
+            const remainingCount = card.targetCount - card.currentCount;
+            cardInfo += `<p>目標進度：${progressPercent}% 尚欠${remainingCount}份</p>`;
+        }
+        
+        cardInfo += `<p><a href="${card.recallWebsite}" target="_blank" class="recall-link">前往罷免資訊</a></p>`;
+    }
+    
+    currentCardDisplay.innerHTML = cardInfo;
+    
+    // 將抽牌按鈕變成返回集卡書按鈕
+    drawButton.textContent = '返回集卡書';
+    drawButton.style.backgroundColor = '#dc2626'; // 紅色背景
+    drawButton.style.color = 'white';
+    
+    // 保存原始目標事件
+    drawButton.originalClickEvent = drawButton.onclick;
+    
+    // 更改按鈕功能
+    drawButton.onclick = backToCollection;
+    
+    // 創建並動畫顯示新卡片
+    createCardMeshFn(card).then(cardMesh => {
+        // 保存當前卡片以供後續清除
+        gameState.currentCard = card;
+        
+        // 動畫顯示卡片
+        animateCardFn(cardMesh);
+    });
+}
+
+// 返回集卡書
+function backToCollection() {
+    // 重設狀態
+    gameState.viewingCardDetail = false;
+    
+    // 隱藏卡片資訊
+    currentCardDisplay.style.display = 'none';
+    
+    // 將返回集卡書按鈕變回抽牌按鈕
+    drawButton.textContent = '抽牌';
+    drawButton.style.backgroundColor = ''; // 恢復預設背景色
+    drawButton.style.color = 'rgba(0, 0, 0, 0.8)';
+    
+    // 更改按鈕功能
+    drawButton.onclick = drawButton.originalClickEvent;
+    
+    // 顯示集卡書
+    gameState.showCollection = true;
+    collectionModal.style.display = 'flex';
+    
+    // 更新集卡書
+    updateCollectionModal();
+}
+
+// 計算剩餘天數
+function calculateRemainingDays(endDateStr) {
+    if (!endDateStr) return null;
+    
+    // 處理日期格式 (轉換 2025/4/26 格式為 2025-04-26)
+    let formattedDate = endDateStr;
+    if (endDateStr.includes('/')) {
+        const parts = endDateStr.split('/');
+        const year = parts[0];
+        const month = parts[1].padStart(2, '0');
+        const day = parts[2].padStart(2, '0');
+        formattedDate = `${year}-${month}-${day}`;
+    }
+    
+    const endDate = new Date(formattedDate);
+    const today = new Date();
+    
+    // 設定時間為午夜以確保計算天數準確
+    today.setHours(0, 0, 0, 0);
+    endDate.setHours(0, 0, 0, 0);
+    
+    const timeDiff = endDate.getTime() - today.getTime();
+    const dayDiff = Math.ceil(timeDiff / (1000 * 3600 * 24));
+    
+    return dayDiff;
+}
+
+// 隱藏卡片詳情
+function hideCardDetail() {
+    // 與 backToCollection 功能相同
+    backToCollection();
 }
 
 // 更新集卡書內容
@@ -339,7 +488,11 @@ function updateCollectionModal() {
                 cardContent.appendChild(personName);
             }
             
-            // 不顯示卡片名稱，依照需求
+            // 為已收集的卡片添加點擊事件
+            cardItem.style.cursor = 'pointer';
+            cardItem.addEventListener('click', () => {
+                showCardDetail(card);
+            });
         } else {
             // 未收集的卡片
             const placeholderContainer = document.createElement('div');
