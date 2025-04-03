@@ -23,7 +23,8 @@ export function initThreeJS(rootElement, state) {
     // 創建相機
     camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
     camera.position.z = 5;
-    
+    camera.position.y = 4; // 向上調整相機位置，以便更好地查看卡片
+
     // 創建渲染器
     renderer = new THREE.WebGLRenderer({ antialias: true });
     renderer.setSize(window.innerWidth, window.innerHeight);
@@ -400,9 +401,6 @@ export function animateCard(newCardMesh) {
     scene.add(newCardMesh);
     cardMesh = newCardMesh;
     
-    // 重置旋轉速度
-    gameState.rotationVelocity = 0;
-    
     // 設置卡片的初始位置和旋轉
     cardMesh.position.set(0, -10, 0);
     cardMesh.rotation.set(0, Math.PI, 0);
@@ -443,7 +441,8 @@ export function animateCard(newCardMesh) {
             ? 2 * progress * progress
             : 1 - Math.pow(-2 * progress + 2, 2) / 2;
         
-        cardMesh.position.y = -10 + (10 * easeOutBack);
+        // 修改這一行，向上調整卡片最終位置
+        cardMesh.position.y = -10 + (10 * easeOutBack) + 5; // 增加5個單位向上移動
         cardMesh.rotation.y = Math.PI - (Math.PI * easeOut);
         
         requestAnimationFrame(flyIn);
