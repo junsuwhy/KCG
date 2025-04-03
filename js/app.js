@@ -157,10 +157,25 @@ async function init() {
     // 創建 UI 元素
     createUI();
     
-    // 設置動畫完成回調
+    // 設置動畫完成回調以及安全檢查
     gameState.onAnimationComplete = () => {
-        drawButton.disabled = false;
-        drawButton.textContent = '抽牌';
+        // 先重新獲取按鈕引用，以防被移除
+        const currentDrawButton = document.querySelector('.draw-button');
+        
+        if (currentDrawButton) {
+            // 更新全局引用
+            drawButton = currentDrawButton;
+            drawButton.disabled = false;
+            
+            // 只有在非集卡書查看模式下才恢復「抽牌」文字
+            if (!gameState.viewingCardDetail) {
+                drawButton.textContent = '抽牌';
+            }
+            
+            console.log('動畫完成回調成功執行');
+        } else {
+            console.error('動畫完成回調中無法找到抽牌按鈕');
+        }
     };
     
     // 初始化 Three.js
@@ -211,9 +226,31 @@ function createUI() {
 async function drawCard() {
     if (gameState.isDrawing) return;
     
+    // 確保清除與集卡書查看相關的狀態
+    gameState.viewingCardDetail = false;
+    
+    // 清除先前可能存在的卡片資訊
+    currentCardDisplay.innerHTML = '';
+    
     gameState.isDrawing = true;
     drawButton.disabled = true;
     drawButton.textContent = '抽牌中...';
+    
+    // 設置安全計時器，確保按鈕不會永久禁用
+    const safetyTimer = setTimeout(() => {
+        if (gameState.isDrawing) {
+            console.log('安全計時器觸發：重置抽牌狀態');
+            gameState.isDrawing = false;
+            
+            // 重新獲取按鈕引用
+            const currentDrawButton = document.querySelector('.draw-button');
+            if (currentDrawButton) {
+                drawButton = currentDrawButton; // 更新全局引用
+                drawButton.disabled = false;
+                drawButton.textContent = '抽牌';
+            }
+        }
+    }, 10000); // 10秒後如果動畫還沒完成，強制重置
     
     // 計算總投票數
     const totalVotes = cardTypes.reduce((sum, card) => {
@@ -261,8 +298,26 @@ async function drawCard() {
     saveCardsToStorage(gameState);
     
     // 創建並動畫顯示新卡片
-    const newCardMesh = await createCardMesh(newCard);
-    animateCard(newCardMesh);
+    try {
+        const newCardMesh = await createCardMesh(newCard);
+        // 清除安全計時器
+        clearTimeout(safetyTimer);
+        animateCard(newCardMesh);
+    } catch (error) {
+        console.error('創建卡片時發生錯誤:', error);
+        // 發生錯誤時恢復按鈕狀態
+        gameState.isDrawing = false;
+        
+        // 重新獲取按鈕引用
+        const currentDrawButton = document.querySelector('.draw-button');
+        if (currentDrawButton) {
+            drawButton = currentDrawButton; // 更新全局引用
+            drawButton.disabled = false;
+            drawButton.textContent = '抽牌';
+        }
+        
+        clearTimeout(safetyTimer);
+    }
 }
 
 // 計算剩餘天數
@@ -313,7 +368,14 @@ function createProgressBar(current, target) {
 
 // 更新當前卡片顯示 - 導出供 collection.js 使用
 export function updateCurrentCardDisplay(card) {
+    // 確保卡片資訊容器可見
     currentCardDisplay.style.display = 'block';
+
+    // 之前清除卡片資訊內容，避免重複
+    if (currentCardDisplay.innerHTML.trim() !== '') {
+        // 如果已經有內容，先清除
+        currentCardDisplay.innerHTML = '';
+    }
 
     // 計算抽中機率
     const totalVotes = cardTypes.reduce((sum, c) => {

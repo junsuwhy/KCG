@@ -420,6 +420,15 @@ export function animateCard(newCardMesh) {
             // 更新UI（透過回調通知外部）
             if (typeof gameState.onAnimationComplete === 'function') {
                 gameState.onAnimationComplete();
+            } else {
+                // 如果回調不存在，直接重置按鈕狀態
+                const drawButton = document.querySelector('.draw-button');
+                if (drawButton) {
+                    drawButton.disabled = false;
+                    if (!gameState.viewingCardDetail) {
+                        drawButton.textContent = '抽牌';
+                    }
+                }
             }
             
             // 在卡片周圍創建星星

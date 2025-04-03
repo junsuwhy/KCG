@@ -43,6 +43,30 @@ function setupCollectionSystem(mountEl, gameStateRef, createCardMesh, animateCar
     currentCardDisplay = currentCardDisplayRef;  // 當前卡片顯示引用
     uiContainer = uiContainerRef;  // UI容器引用
     
+    // 清理重複的 UI 容器（如果有）
+    const uiContainers = document.querySelectorAll('.ui-container');
+    if (uiContainers.length > 1) {
+        console.log('初始化時清理多餘的 UI 容器');
+        // 移除第二個以後的所有 ui-container
+        // 保存引用以避免引用丟失
+        const originalDrawButton = document.querySelector('.draw-button');
+        const originalState = {
+            disabled: originalDrawButton?.disabled,
+            textContent: originalDrawButton?.textContent
+        };
+        
+        for (let i = 1; i < uiContainers.length; i++) {
+            uiContainers[i].remove();
+        }
+        
+        // 重新獲取按鈕並還原其狀態
+        const newDrawButton = document.querySelector('.draw-button');
+        if (newDrawButton && originalState.textContent) {
+            newDrawButton.disabled = originalState.disabled;
+            newDrawButton.textContent = originalState.textContent;
+        }
+    }
+    
     // 創建集卡書按鈕
     createCollectionButton();
     
@@ -172,6 +196,36 @@ function toggleCollection() {
         updateCollectionModal();
         collectionModal.style.display = 'flex';
         
+        // 清理重複的 UI 容器（如果有）
+        const uiContainers = document.querySelectorAll('.ui-container');
+        if (uiContainers.length > 1) {
+            // 保存引用以避免引用丟失
+            const originalDrawButton = document.querySelector('.draw-button');
+            const originalState = {
+                disabled: originalDrawButton?.disabled,
+                textContent: originalDrawButton?.textContent,
+                onclick: originalDrawButton?.onclick
+            };
+            
+            // 移除第二個以後的所有 ui-container
+            for (let i = 1; i < uiContainers.length; i++) {
+                uiContainers[i].remove();
+            }
+            
+            // 重新獲取按鈕並還原其狀態
+            const newDrawButton = document.querySelector('.draw-button');
+            if (newDrawButton && originalState.textContent) {
+                newDrawButton.disabled = originalState.disabled;
+                newDrawButton.textContent = originalState.textContent;
+                if (originalState.onclick) {
+                    newDrawButton.onclick = originalState.onclick;
+                }
+                
+                // 更新全局引用
+                drawButton = newDrawButton;
+            }
+        }
+        
         // 如果正在顯示卡片詳情，重設為抽牌模式
         if (gameState.viewingCardDetail) {
             backToCollection();
@@ -205,6 +259,36 @@ function showCardDetail(card) {
     const cardCount = gameState.cards.filter(c => c.name === card.name).length;
     card.count = cardCount;
     
+    // 清理重複的 UI 容器（如果有）
+    const uiContainers = document.querySelectorAll('.ui-container');
+    if (uiContainers.length > 1) {
+        // 保存引用以避免引用丟失
+        const originalDrawButton = document.querySelector('.draw-button');
+        const originalState = {
+            disabled: originalDrawButton?.disabled,
+            textContent: originalDrawButton?.textContent,
+            onclick: originalDrawButton?.onclick
+        };
+        
+        // 移除第二個以後的所有 ui-container
+        for (let i = 1; i < uiContainers.length; i++) {
+            uiContainers[i].remove();
+        }
+        
+        // 重新獲取按鈕並還原其狀態
+        const newDrawButton = document.querySelector('.draw-button');
+        if (newDrawButton && originalState.textContent) {
+            newDrawButton.disabled = originalState.disabled;
+            newDrawButton.textContent = originalState.textContent;
+            if (originalState.onclick) {
+                newDrawButton.onclick = originalState.onclick;
+            }
+            
+            // 更新全局引用
+            drawButton = newDrawButton;
+        }
+    }
+    
     // 使用 app.js 的 updateCurrentCardDisplay 函數來顯示卡片
     appModule.updateCurrentCardDisplay(card);
     
@@ -236,6 +320,8 @@ function backToCollection() {
     
     // 隱藏卡片資訊
     currentCardDisplay.style.display = 'none';
+    // 清除卡片資訊內容
+    currentCardDisplay.innerHTML = '';
     
     // 將返回集卡書按鈕變回抽牌按鈕
     drawButton.textContent = '抽牌';
@@ -244,6 +330,15 @@ function backToCollection() {
     
     // 更改按鈕功能
     drawButton.onclick = drawButton.originalClickEvent;
+    
+    // 清理重複的 UI 容器（如果有）
+    const uiContainers = document.querySelectorAll('.ui-container');
+    if (uiContainers.length > 1) {
+        // 移除第二個以後的所有 ui-container
+        for (let i = 1; i < uiContainers.length; i++) {
+            uiContainers[i].remove();
+        }
+    }
     
     // 顯示集卡書
     gameState.showCollection = true;
