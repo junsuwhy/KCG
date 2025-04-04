@@ -358,7 +358,20 @@ export function updateCurrentCardDisplay(card) {
 window.drawCard = drawCard;
 
 // 啟動遊戲
-document.addEventListener('DOMContentLoaded', init);
+// 使用一個全局標誌變數來確保初始化只執行一次
+window.hasInitialized = window.hasInitialized || false;
+
+document.addEventListener('DOMContentLoaded', () => {
+    console.log('DOMContentLoaded 觸發, hasInitialized:', window.hasInitialized);
+    
+    if (!window.hasInitialized) {
+        window.hasInitialized = true;
+        console.log('開始執行 init()');
+        init();
+    } else {
+        console.log('初始化已完成，跳過');
+    }
+});
 
 // 清理資源（例如在組件卸載時）
 export function cleanupGame() {
