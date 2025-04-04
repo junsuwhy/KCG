@@ -2,8 +2,9 @@ import * as THREE from 'three';
 
 // Three.js 相關狀態
 let scene, camera, renderer;
-// 將場景暴露為全局變數，供集卡書系統訪問
+// 將場景和卡片模型暴露為全局變數，供集卡書系統訪問
 window.scene = null;
+window.cardMesh = null;
 let cardMesh;
 let animationFrameId;
 let stars = [];  // 用於存儲星星
@@ -398,11 +399,14 @@ export function animateCard(newCardMesh) {
     // 清除之前的卡片
     if (cardMesh) {
         scene.remove(cardMesh);
+        cardMesh = null;
+        window.cardMesh = null; // 清除全局引用
     }
     
     // 將卡片添加到場景
     scene.add(newCardMesh);
     cardMesh = newCardMesh;
+    window.cardMesh = newCardMesh; // 更新全局引用
     
     // 設置卡片的初始位置和旋轉
     cardMesh.position.set(0, -10, 0);

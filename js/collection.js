@@ -178,6 +178,11 @@ function toggleCollection() {
         }
     } else {
         collectionModal.style.display = 'none';
+        
+        // 離開集卡書時清空畫面
+        if (appModule.clearCurrentCard) {
+            appModule.clearCurrentCard();
+        }
     }
 }
 

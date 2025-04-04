@@ -160,8 +160,23 @@ async function init() {
     
     // 設置動畫完成回調
     gameState.onAnimationComplete = () => {
-        drawButton.disabled = false;
-        drawButton.textContent = '抽牌';
+        // 先重新獲取按鈕引用，以防被移除
+        const currentDrawButton = document.querySelector('.draw-button');
+        
+        if (currentDrawButton) {
+            // 更新全局引用
+            drawButton = currentDrawButton;
+            drawButton.disabled = false;
+            
+            // 只有在非集卡書查看模式下才恢復「抽牌」文字
+            if (!gameState.viewingCardDetail) {
+                drawButton.textContent = '抽牌';
+            }
+            
+            console.log('動畫完成回調成功執行');
+        } else {
+            console.error('動畫完成回調中無法找到抽牌按鈕');
+        }
     };
     
     // 初始化 Three.js
@@ -210,7 +225,8 @@ function createUI() {
 
 // 修改抽卡功能
 async function drawCard() {
-    if (gameState.isDrawing) return;
+    // 如果正在集卡書模式或正在抽牌，則不執行抽牌功能
+    if (gameState.isDrawing || gameState.showCollection || gameState.viewingCardDetail) return;
     
     gameState.isDrawing = true;
     drawButton.disabled = true;
@@ -376,4 +392,18 @@ document.addEventListener('DOMContentLoaded', () => {
 // 清理資源（例如在組件卸載時）
 export function cleanupGame() {
     cleanup(); // 調用 animation.js 的清理函數
+}
+
+// 清空當前卡片函數 - 提供給 collection.js 使用
+export function clearCurrentCard() {
+    // 如果存在 cardMesh，從場景中移除
+    if (window.scene && window.cardMesh) {
+        window.scene.remove(window.cardMesh);
+        window.cardMesh = null;
+    }
+    
+    // 隱藏當前卡片資訊
+    if (currentCardDisplay) {
+        currentCardDisplay.style.display = 'none';
+    }
 }
