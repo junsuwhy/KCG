@@ -60,7 +60,7 @@ function createCollectionButton() {
     collectionButton.setAttribute('title', '集卡書');
     
     // 使用 fetch 載入 SVG
-    fetch('.images/book.svg')
+    fetch('./images/book.svg')
         .then(response => response.text())
         .then(svgContent => {
             // 移除任何可能導致問題的 DOCTYPE 或註釋
